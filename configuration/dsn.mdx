@@ -1,0 +1,80 @@
+---
+title: "Your Argus DSN: Project Connection String"
+sidebarTitle: "DSN"
+description: "A DSN (Data Source Name) connects your SDK to a specific Argus project. Learn the format, where to find it, and how to use it."
+---
+
+A DSN (Data Source Name) is the connection string that tells your Argus SDK where to send events. Every project gets a unique DSN at creation time — paste it into your `init()` call once, and Argus handles the rest. Without a valid DSN, the SDK silently no-ops instead of crashing your app, but you won't receive any error data, so getting this value right from the start matters.
+
+## DSN format
+
+Every Argus DSN follows this structure:
+
+```
+https://PUBLIC_KEY@your-domain.com/PROJECT_ID
+```
+
+| Component | Description |
+|---|---|
+| `PUBLIC_KEY` | Authenticates your SDK with the ingest endpoint. Argus uses this as the `X-Argus-Key` header on every envelope it sends. It is **not** a secret — it's safe to include in frontend code. |
+| `your-domain.com` | The host where your Argus instance is running. |
+| `PROJECT_ID` | The unique identifier for your project. The ingest route is scoped to this ID, so events land in exactly the right project. |
+
+## Finding your DSN
+
+<Steps>
+  <Step title="Log into the Argus dashboard">
+    Navigate to your Argus instance and sign in with your account credentials.
+  </Step>
+  <Step title="Open your project">
+    Select an existing project from the Projects Console. If you haven't created one yet, click **New Project** — your DSN is displayed immediately on the onboarding screen once the project is created.
+  </Step>
+  <Step title="Copy the DSN from Settings">
+    Inside the project, go to **Settings**. Find the **Client key (DSN)** section and click **Copy** next to the DSN string.
+  </Step>
+</Steps>
+
+## Using your DSN in code
+
+Pass the DSN as the `dsn` property of the options object you hand to `init()`. Call `init()` once, as early as possible in your application's startup sequence — before any code that could throw.
+
+<CodeGroup>
+
+```typescript Browser
+import { init } from '@argus/sdk-browser';
+
+init({ dsn: 'https://abc123@your-domain.com/proj456' });
+```
+
+```typescript Node.js
+import { init } from '@argus/sdk-node';
+
+init({ dsn: 'https://abc123@your-domain.com/proj456' });
+```
+
+```typescript React
+import { init } from '@argus/sdk-react';
+
+init({ dsn: 'https://abc123@your-domain.com/proj456' });
+```
+
+</CodeGroup>
+
+## DSN validation
+
+Argus validates the DSN synchronously inside `init()` and **throws an error immediately** if anything is wrong. Conditions that cause a throw:
+
+- The string is not a valid URL
+- The public key (the part before `@`) is missing
+- The project ID (the URL path) is missing
+- The protocol is anything other than `http` or `https`
+
+This behaviour is intentional. A bad DSN is a misconfiguration, and you want to catch it at deploy time — not silently lose production error data for days.
+
+## Security note
+
+The DSN public key grants write-only access to a single project's ingest endpoint. It **cannot** read issues, query data, or access any other part of your account. Bundle it freely in client-side code, commit it to your repository, and include it in your build pipeline without concern.
+
+<Warning>
+  Each project has its own unique DSN. Using the wrong DSN sends your events to the wrong project — they won't appear where you expect them. Always verify the DSN matches the project you intend to monitor.
+</Warning>

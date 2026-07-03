@@ -1,0 +1,73 @@
+---
+title: "Creating and Managing Argus Projects"
+sidebarTitle: "Projects"
+description: "Projects organize your monitoring by application. Create, rename, and delete projects, and manage DSN keys from the Argus dashboard."
+---
+
+Each application you want to monitor gets its own Argus project. A project is the top-level container for issues, events, performance transactions, and alert rules. When you create a project, Argus generates a unique DSN — the connection string your SDK uses to route events to that specific project.
+
+## Plan limits
+
+The plan your organization is on determines how many projects you can create.
+
+| Plan | Project limit |
+|---|---|
+| Free | 1 project |
+| Pro | Unlimited projects |
+
+<Tip>
+  To upgrade your plan or review your current usage, visit [Billing & Usage](/platform/usage-billing).
+</Tip>
+
+## Creating a project
+
+<Steps>
+  <Step title="Open the Projects Console">
+    From the Argus dashboard, navigate to the **Projects** section in the main navigation.
+  </Step>
+  <Step title="Click New Project">
+    Select **New Project** to open the project creation form.
+  </Step>
+  <Step title="Name your project and choose a platform">
+    Enter a descriptive project name — something that makes the source of events obvious at a glance, such as `frontend-prod` or `payments-api`. Then select your platform: **Browser**, **Node**, or **React**.
+  </Step>
+  <Step title="Copy your DSN">
+    After Argus creates the project, it displays your DSN on the onboarding screen under **Client key (DSN)**. Copy this value now — you can always retrieve it again from Settings, but having it handy speeds up your SDK setup.
+  </Step>
+  <Step title="Initialize the SDK">
+    Paste the DSN into the `dsn` option of your SDK's `init()` call. Install the package for your platform if you haven't already, then call `init()` once at startup.
+
+    ```typescript
+    import { init } from '@argus/sdk-node';
+
+    init({ dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID' });
+    ```
+
+    See [DSN](/configuration/dsn) for the full format reference and per-SDK examples.
+  </Step>
+</Steps>
+
+## Project settings
+
+Open a project and navigate to **Settings** to manage it. From there you can:
+
+- **Rename the project** — update the display name shown across the dashboard and in alert notifications.
+- **View and copy the DSN** — find the DSN in the **Client key (DSN)** section if you need it again after onboarding.
+- **See install snippets** — the **Connect your app** section shows the install command and `init()` snippet for Browser, React, and Node, pre-filled with your project's DSN.
+- **Delete the project** — scroll to the **Danger Zone** section at the bottom of the page. See [Deleting a project](#deleting-a-project) below.
+
+## Multiple projects
+
+You have a few common patterns to choose from when deciding how to structure your projects:
+
+- **One project per application** — create separate projects for your frontend and backend (e.g. `frontend-prod`, `api-prod`). Each gets its own issue queue and DSN, keeping the two error streams completely separate.
+- **One project per environment** — create `my-app-production` and `my-app-staging` as distinct projects if you want completely isolated issue queues per environment. This is useful when staging generates enough volume that you'd rather not filter it out of a shared project.
+- **One project with environment tags** — use a single project and pass the `environment` option to `init()` (`'production'`, `'staging'`, etc.). Use the dashboard's environment filter to focus on what you need. This is the simplest approach if you want a unified view of all issues for an app. See [Environments](/configuration/environments) for details.
+
+## Deleting a project
+
+To delete a project, go to **Settings** and scroll to the **Danger Zone** section at the bottom of the page. Click **Delete project**, then confirm in the modal that appears.
+
+<Warning>
+  Deleting a project permanently removes all of its issues, events, performance transactions, and alert rules. This action cannot be undone. If you only want to stop receiving new events, consider leaving the project in place and removing the SDK `init()` call from your application instead.
+</Warning>

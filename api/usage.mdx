@@ -1,0 +1,94 @@
+---
+title: "REST API Endpoint for Argus Usage & Quota"
+sidebarTitle: "Usage"
+description: "Check your organization's current event quota usage, plan details, and breakdown by event level via the Argus usage API."
+---
+
+The usage endpoint returns your organization's current event quota consumption for the ongoing billing month. You can use it to build internal dashboards, trigger alerts before you hit your plan limit, or verify that your integration is sending the expected volume of events. The response always reflects live data — the count updates as new events arrive.
+
+## Authentication
+
+This endpoint requires an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## Get Usage
+
+Retrieve the current quota consumption for your organization, broken down by event severity level.
+
+```
+GET /api/v1/usage
+```
+
+This endpoint requires no path or query parameters — Argus derives your organization from the authenticated session.
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/usage \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Usage fetched",
+  "data": {
+    "plan": "FREE",
+    "used": 3241,
+    "limit": 10000,
+    "month": "2024-07",
+    "breakdown": {
+      "errors": 2800,
+      "warnings": 341,
+      "info": 100
+    }
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="data.plan" type="string">
+  Your organization's current plan: `FREE` or `PRO`.
+</ResponseField>
+
+<ResponseField name="data.used" type="integer">
+  The total number of events your organization has ingested in the current billing month, across all projects.
+</ResponseField>
+
+<ResponseField name="data.limit" type="integer">
+  The maximum number of events allowed this month. Plan limits are:
+
+  | Plan  | Monthly event limit |
+  |-------|---------------------|
+  | FREE  | 10,000              |
+  | PRO   | 500,000             |
+</ResponseField>
+
+<ResponseField name="data.month" type="string">
+  The current billing month in `YYYY-MM` format, e.g. `"2024-07"`. Counts reset at the start of each calendar month (UTC).
+</ResponseField>
+
+<ResponseField name="data.breakdown" type="object">
+  A breakdown of consumed events by severity group, aggregated across all projects in your organization.
+
+  | Field      | Included levels         | Description                              |
+  |------------|-------------------------|------------------------------------------|
+  | `errors`   | `ERROR` + `FATAL`       | All error and fatal-level events         |
+  | `warnings` | `WARNING`               | Warning-level events                     |
+  | `info`     | `INFO` + `DEBUG`        | Informational and debug-level events     |
+
+  The sum of `errors + warnings + info` equals `used`.
+</ResponseField>
+
+## Response Codes
+
+| Status | Meaning                                                |
+|--------|--------------------------------------------------------|
+| `200`  | Request succeeded.                                     |
+| `401`  | Not authenticated — no valid session.                  |
+| `404`  | Your account is not a member of any organization.      |

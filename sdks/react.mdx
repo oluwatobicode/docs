@@ -1,0 +1,160 @@
+---
+title: "Argus React SDK: Catch Render Errors in React Apps"
+sidebarTitle: "React SDK"
+description: "Use @argus/sdk-react to capture React render errors via ArgusErrorBoundary and automatically track all unhandled browser errors in your app."
+---
+
+React's production builds do not forward component render crashes to `window.onerror` — a thrown error inside a render function or lifecycle method is caught by React's own reconciler and never reaches the global handler. The only reliable hook React exposes is the class component lifecycle method `componentDidCatch`. `<ArgusErrorBoundary>` wraps that lifecycle into a drop-in component you can place around your component tree. Because the React SDK re-exports everything from `@argus/sdk-browser`, you get automatic capture of all unhandled browser errors — plus render-crash reporting — from a single import.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install @argus/sdk-react
+```
+
+```bash yarn
+yarn add @argus/sdk-react
+```
+
+```bash pnpm
+pnpm add @argus/sdk-react
+```
+
+</CodeGroup>
+
+## Initialization
+
+<Steps>
+
+### Call `init()` at the top of your entry file
+
+Import `init` from `@argus/sdk-react` and call it before rendering your root component. This registers the `window.onerror` and `unhandledrejection` handlers that capture all non-render errors alongside your boundary.
+
+```typescript
+import { init } from '@argus/sdk-react';
+
+init({
+  dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID',
+  environment: 'production',
+  release: '1.0.0',
+});
+```
+
+### Configure `InitOptions`
+
+`init()` accepts the same `InitOptions` interface as the Browser SDK:
+
+```typescript
+export interface InitOptions {
+  /** Your project DSN (required). Format: https://PUBLIC_KEY@host/PROJECT_ID */
+  dsn: string;
+
+  /** The environment name shown in Argus (e.g. 'production', 'staging'). */
+  environment?: string;
+
+  /** Your application's release version (e.g. '1.4.2' or a git SHA). */
+  release?: string;
+}
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `dsn` | `string` | ✅ | Your Argus project DSN. A malformed DSN throws loudly at startup. |
+| `environment` | `string` | — | The deployment environment. Shown as a filter in Argus. |
+| `release` | `string` | — | Your application version. Use it to correlate errors with deploys. |
+
+</Steps>
+
+## ArgusErrorBoundary
+
+Wrap your root component (or any subtree you want to protect) with `<ArgusErrorBoundary>`. When a render error occurs inside the boundary, `componentDidCatch` calls `captureException` with the error and attaches the crashing component's name as a tag.
+
+```tsx
+import { init, ArgusErrorBoundary } from '@argus/sdk-react';
+
+init({ dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID' });
+
+function Root() {
+  return (
+    <ArgusErrorBoundary fallback={<p>Something went wrong. Reload the page to try again.</p>}>
+      <App />
+    </ArgusErrorBoundary>
+  );
+}
+```
+
+### Props
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| `children` | `ReactNode` | ✅ | The component subtree to monitor for render errors. |
+| `fallback` | `ReactNode` | — | What to render after a crash. Defaults to rendering nothing (`null`) if omitted. |
+
+### How it works
+
+When a render error propagates up to the boundary, React calls two methods in sequence:
+
+1. **`getDerivedStateFromError()`** — sets `hasError: true` so the boundary re-renders and displays your `fallback`.
+2. **`componentDidCatch(error, info)`** — calls `captureException(error)` and attaches the first line of React's `componentStack` as a tag named `componentStack`. That first line is the name of the component that threw, giving you an immediate pointer in Argus without needing to read the full stack trace.
+
+```tsx
+// From ErrorBoundary.tsx
+componentDidCatch(error: Error, info: ErrorInfo): void {
+  void captureException(error, {
+    tags: info.componentStack
+      ? { componentStack: info.componentStack.trim().split('\n')[0] ?? '' }
+      : undefined,
+  });
+}
+```
+
+### Protecting multiple subtrees
+
+You can nest multiple boundaries to give different parts of your UI independent fallback behavior. Only the subtree inside a boundary is unmounted on a crash — the rest of your app continues running.
+
+```tsx
+import { ArgusErrorBoundary } from '@argus/sdk-react';
+
+function Dashboard() {
+  return (
+    <div>
+      <ArgusErrorBoundary fallback={<p>Charts unavailable</p>}>
+        <AnalyticsPanel />
+      </ArgusErrorBoundary>
+
+      <ArgusErrorBoundary fallback={<p>Feed unavailable</p>}>
+        <ActivityFeed />
+      </ArgusErrorBoundary>
+    </div>
+  );
+}
+```
+
+## Why a Boundary?
+
+<Note>
+React intercepts render errors inside its reconciler before they reach the browser's global `window.onerror` handler. In production builds, a component that throws during render produces no global error event — without a boundary, the crash is invisible to any global monitoring tool. `componentDidCatch` is the only lifecycle hook React provides for observing these crashes, and it is only available on class components. `<ArgusErrorBoundary>` is that class component.
+</Note>
+
+## Exported API
+
+`@argus/sdk-react` re-exports everything from `@argus/sdk-browser`, so you never need to install or import from both packages.
+
+| Symbol | Kind | Description |
+|---|---|---|
+| `init` | `function` | Initializes the SDK and registers global browser error handlers. Re-exported from `@argus/sdk-browser`. |
+| `captureException` | `function` | Manually captures and sends an exception. Re-exported from `@argus/sdk-browser`. |
+| `ArgusErrorBoundary` | `class component` | React error boundary that captures render crashes. |
+| `InitOptions` | `interface` | TypeScript type for the `init()` options object. Re-exported from `@argus/sdk-browser`. |
+
+```tsx
+// One import for everything — no need to install @argus/sdk-browser separately
+import { init, captureException, ArgusErrorBoundary } from '@argus/sdk-react';
+import type { InitOptions } from '@argus/sdk-react';
+```
+
+<Tip>
+If you use React in a non-browser runtime such as React Native, the Browser SDK's global handlers (`window.onerror`, `unhandledrejection`) are not available. Use the `@argus/sdk-native` SDK once it becomes available for native runtime support.
+</Tip>

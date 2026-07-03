@@ -1,0 +1,171 @@
+---
+title: "REST API Endpoints for Argus Events"
+sidebarTitle: "Events"
+description: "Retrieve individual error events for a given issue — including stack traces, user context, and request metadata."
+---
+
+Events are individual occurrences of an error — each ingest call that passes validation creates exactly one event. An issue groups many events together by fingerprint, but the underlying events preserve the full detail of each occurrence: the exact stack trace, which user was affected, what the HTTP request looked like, and what breadcrumbs led up to the failure. Use the events API when you need to inspect the raw payload behind an issue.
+
+## Authentication
+
+This endpoint requires an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## List Events for an Issue
+
+Return a paginated list of events belonging to a specific issue, ordered by timestamp descending (most recent first).
+
+```
+GET /api/v1/projects/:projectId/issues/:issueId/events
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project the issue belongs to.
+</ParamField>
+
+<ParamField path="issueId" type="string" required>
+  The ID of the issue whose events you want to retrieve.
+</ParamField>
+
+### Query Parameters
+
+| Parameter | Type    | Description                                             | Default |
+|-----------|---------|---------------------------------------------------------|---------|
+| `page`    | integer | Page number to retrieve. Minimum `1`.                   | `1`     |
+| `limit`   | integer | Number of events per page. Range: `1`–`50`.             | `10`    |
+
+### Example Request
+
+```bash
+curl 'https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/issues/clxk3a7bc0002qw8e4h9v3rb5/events?page=1&limit=10' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Events fetched",
+  "data": {
+    "events": [
+      {
+        "id": "clxk4b8cd0003qw8e5i0w4sc6",
+        "issueId": "clxk3a7bc0002qw8e4h9v3rb5",
+        "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+        "level": "ERROR",
+        "message": "Cannot read properties of undefined (reading 'id')",
+        "stacktrace": {
+          "frames": [
+            {
+              "filename": "app.js",
+              "function": "handleClick",
+              "lineno": 42,
+              "colno": 7
+            },
+            {
+              "filename": "app.js",
+              "function": "dispatchEvent",
+              "lineno": 18
+            }
+          ]
+        },
+        "contexts": {
+          "browser": { "name": "Chrome", "version": "125.0" },
+          "os": { "name": "macOS", "version": "14.4" }
+        },
+        "tags": {
+          "region": "us-east-1",
+          "environment": "production"
+        },
+        "userContext": {
+          "id": "usr_01HX",
+          "email": "alice@example.com"
+        },
+        "request": {
+          "url": "https://app.example.com/dashboard",
+          "method": "GET"
+        },
+        "timestamp": "2024-07-15T14:05:33.000Z",
+        "receivedAt": "2024-07-15T14:05:34.123Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 47,
+      "pages": 5
+    }
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="data.events" type="array">
+  Array of event objects, ordered by `timestamp` descending.
+</ResponseField>
+
+<ResponseField name="data.events[].id" type="string">
+  Unique identifier for the event.
+</ResponseField>
+
+<ResponseField name="data.events[].issueId" type="string">
+  ID of the parent issue this event is grouped into.
+</ResponseField>
+
+<ResponseField name="data.events[].projectId" type="string">
+  ID of the project this event belongs to.
+</ResponseField>
+
+<ResponseField name="data.events[].level" type="string">
+  Severity level as stored: `FATAL`, `ERROR`, `WARNING`, `INFO`, or `DEBUG`.
+</ResponseField>
+
+<ResponseField name="data.events[].message" type="string">
+  The error message string from the ingested envelope's `exception.value`.
+</ResponseField>
+
+<ResponseField name="data.events[].stacktrace" type="object | null">
+  The full stack trace payload. Contains a `frames` array (innermost frame first), where each frame has `filename`, `lineno`, and optionally `function` and `colno`. May be `null` if no stack trace was provided at ingest time.
+</ResponseField>
+
+<ResponseField name="data.events[].contexts" type="object | null">
+  Runtime environment context. May contain `browser` (`name`, `version`) and/or `os` (`name`, `version`) sub-objects. `null` if not provided at ingest time.
+</ResponseField>
+
+<ResponseField name="data.events[].tags" type="object | null">
+  Flat `Record<string, string>` of custom tags attached to this event. `null` if no tags were sent.
+</ResponseField>
+
+<ResponseField name="data.events[].userContext" type="object | null">
+  The `user` payload from the envelope, containing the optional fields `id` and `email`. `null` if no user was attached.
+</ResponseField>
+
+<ResponseField name="data.events[].request" type="object | null">
+  HTTP request context, with optional `url`, `method`, and `headers` fields. `null` if not provided at ingest time.
+</ResponseField>
+
+<ResponseField name="data.events[].timestamp" type="string">
+  ISO 8601 timestamp of when the error occurred (derived from the envelope's `timestamp` field, or the receipt time if omitted).
+</ResponseField>
+
+<ResponseField name="data.events[].receivedAt" type="string">
+  ISO 8601 timestamp of when the Argus server received and stored the event.
+</ResponseField>
+
+<ResponseField name="data.pagination" type="object">
+  Pagination metadata: `page`, `limit`, `total` (total events for this issue), and `pages` (total page count).
+</ResponseField>
+
+## Response Codes
+
+| Status | Meaning                                              |
+|--------|------------------------------------------------------|
+| `200`  | Request succeeded.                                   |
+| `401`  | Not authenticated — no valid session.                |
+| `404`  | Issue not found in the specified project.            |

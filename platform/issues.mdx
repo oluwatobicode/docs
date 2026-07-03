@@ -1,0 +1,122 @@
+---
+title: "Managing Issues in the Argus Dashboard"
+sidebarTitle: "Issues"
+description: "Learn how Argus groups error events into issues, how to filter and triage them, and how to update their status as you fix bugs."
+---
+
+When your application throws an error, Argus captures it as an **event**. Rather than flooding your dashboard with thousands of identical stack traces, Argus groups related events into a single **issue** — giving you a clear, deduplicated view of every distinct bug affecting your project so you can prioritize fixes and track progress in one place.
+
+## What is an issue?
+
+Every event that arrives at Argus is fingerprinted using a **SHA-256 hash of the top 5 stack frames**. Two errors that originate from the same code path — even if triggered by 100 different users — produce the same fingerprint and are grouped into a single issue. This means your dashboard shows one issue with an event count of 100, not 100 separate items.
+
+Each issue tracks the following fields:
+
+| Field | Description |
+|---|---|
+| `title` | The error message or exception type that describes the problem |
+| `culprit` | The file and function where the error originated |
+| `level` | Severity of the issue (see [Issue levels](#issue-levels) below) |
+| `eventCount` | Total number of times this error has been captured |
+| `firstSeen` | Timestamp when Argus first recorded this fingerprint |
+| `lastSeen` | Timestamp of the most recent matching event |
+
+## Issue levels
+
+Argus assigns a severity level to every issue based on the level reported by the SDK at the time of capture.
+
+| Level | Meaning |
+|---|---|
+| `FATAL` | The application crashed or encountered an unrecoverable failure |
+| `ERROR` | A handled or unhandled exception that disrupted normal operation |
+| `WARNING` | A potential problem that did not break functionality but warrants attention |
+| `INFO` | A notable application event captured for informational purposes |
+| `DEBUG` | Fine-grained diagnostic information, typically used during development |
+
+## Issue status workflow
+
+Every issue moves through a simple lifecycle. Use status to communicate the current state of a bug across your team.
+
+- **UNRESOLVED** — the default state for every new issue. It needs your attention.
+- **RESOLVED** — you have fixed the underlying bug and deployed the fix.
+- **IGNORED** — you have permanently silenced this issue. Argus will not re-alert on it.
+
+```
+UNRESOLVED ──► RESOLVED ──► UNRESOLVED (if the error recurs)
+     │
+     └──► IGNORED
+```
+
+<Note>
+  If a resolved issue fires again — for example, a regression is deployed — Argus automatically moves it back to **UNRESOLVED** and increments the event count. You will see it at the top of your issues list as if it were new.
+</Note>
+
+## Filtering issues
+
+The Issues page in the dashboard gives you two controls to narrow your list:
+
+- **Status tabs** — switch between UNRESOLVED, RESOLVED, and IGNORED views.
+- **Level dropdown** — filter by FATAL, ERROR, WARNING, INFO, or DEBUG (or show all levels).
+
+When using the API, pass the same filters as query parameters:
+
+```http
+GET /api/v1/projects/:projectId/issues?status=UNRESOLVED&level=ERROR
+```
+
+Both `status` and `level` are optional. Results are paginated (default page size: 10, maximum: 50) and sorted by `lastSeen` descending so the most recently active issues appear first.
+
+```http
+GET /api/v1/projects/:projectId/issues?status=UNRESOLVED&level=ERROR&page=2&limit=25
+```
+
+## Viewing an issue
+
+Click any row in the Issues list to open the **Issue detail view**. From there you can inspect:
+
+- **Full stack trace** — each frame shows the filename, function name, and line number. Frames are listed from innermost (where the error occurred) to outermost caller.
+- **Latest events** — the 10 most recent occurrences of this issue, ordered by timestamp descending.
+- **Request context** — the URL and HTTP method of the request that triggered the error, when available.
+- **Tags** — arbitrary key-value pairs attached by the SDK at capture time (e.g. `release`, `environment`).
+- **Browser and OS context** — the browser name/version and operating system reported by the SDK, when available.
+- **User context** — the user ID or email address associated with the session, if your SDK is configured to capture it.
+
+## Updating issue status
+
+### From the dashboard
+
+Open the Issue detail view and use the **Resolve** or **Ignore** buttons in the header. The status updates immediately and the issue moves to the corresponding tab on the Issues list page.
+
+### Via the API
+
+Send a `PATCH` request with the new status in the request body:
+
+```http
+PATCH /api/v1/projects/:projectId/issues/:id
+Content-Type: application/json
+
+{
+  "status": "RESOLVED"
+}
+```
+
+Valid values for `status` are `UNRESOLVED`, `RESOLVED`, and `IGNORED`. The API returns the updated issue object on success.
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Issue status updated",
+  "data": {
+    "id": "clx1234abcd",
+    "title": "TypeError: Cannot read properties of undefined",
+    "status": "RESOLVED",
+    "level": "ERROR",
+    "eventCount": 42,
+    "firstSeen": "2025-06-01T10:00:00.000Z",
+    "lastSeen": "2025-06-15T14:23:11.000Z"
+  }
+}
+```
+
+For the full list of issues endpoints, see the [Issues API reference](/api/issues).

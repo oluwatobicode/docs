@@ -1,0 +1,254 @@
+---
+title: "REST API Endpoints for Argus Issues"
+sidebarTitle: "Issues"
+description: "List, filter, retrieve, and update the status of grouped error issues via the Argus REST API."
+---
+
+Issues are groups of error events that share the same **fingerprint** — a hash derived from the exception type and stack trace. When the same error occurs many times, Argus merges those occurrences into a single issue rather than creating duplicate entries. You interact with issues to track, triage, and resolve the errors in your projects.
+
+## Authentication
+
+All issue endpoints require an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## List Issues
+
+Return a paginated list of issues for a project, with optional filtering by status or severity level.
+
+```
+GET /api/v1/projects/:projectId/issues
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project whose issues you want to list.
+</ParamField>
+
+### Query Parameters
+
+| Parameter | Type    | Description                                                       | Default      |
+|-----------|---------|-------------------------------------------------------------------|--------------|
+| `page`    | integer | Page number to retrieve. Minimum `1`.                             | `1`          |
+| `limit`   | integer | Number of issues per page. Range: `1`–`50`.                      | `10`         |
+| `status`  | string  | Filter by issue status: `UNRESOLVED`, `RESOLVED`, or `IGNORED`.  | All statuses |
+| `level`   | string  | Filter by severity: `FATAL`, `ERROR`, `WARNING`, `INFO`, `DEBUG`. | All levels   |
+
+Invalid values for `status` or `level` are silently ignored and the filter is not applied.
+
+### Example Request
+
+```bash
+curl 'https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/issues?status=UNRESOLVED&level=ERROR&page=1&limit=10' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Issues fetched",
+  "data": {
+    "issues": [
+      {
+        "id": "clxk3a7bc0002qw8e4h9v3rb5",
+        "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+        "fingerprint": "TypeError-abc123",
+        "title": "TypeError: Cannot read properties of undefined (reading 'id')",
+        "culprit": "app.js in handleClick",
+        "status": "UNRESOLVED",
+        "level": "ERROR",
+        "eventCount": 47,
+        "firstSeen": "2024-07-01T09:12:00.000Z",
+        "lastSeen": "2024-07-15T14:05:33.000Z",
+        "createdAt": "2024-07-01T09:12:00.000Z",
+        "updatedAt": "2024-07-15T14:05:33.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 1,
+      "pages": 1
+    }
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="data.issues" type="array">
+  Array of issue objects, ordered by `lastSeen` descending (most recently active first).
+</ResponseField>
+
+<ResponseField name="data.issues[].id" type="string">
+  Unique identifier for the issue.
+</ResponseField>
+
+<ResponseField name="data.issues[].fingerprint" type="string">
+  The hash used to group events into this issue.
+</ResponseField>
+
+<ResponseField name="data.issues[].title" type="string">
+  Human-readable title derived from the exception type and message.
+</ResponseField>
+
+<ResponseField name="data.issues[].culprit" type="string">
+  The source location (file and function) closest to the throw site. May be `null`.
+</ResponseField>
+
+<ResponseField name="data.issues[].status" type="string">
+  Current triage status: `UNRESOLVED`, `RESOLVED`, or `IGNORED`.
+</ResponseField>
+
+<ResponseField name="data.issues[].level" type="string">
+  Severity level: `FATAL`, `ERROR`, `WARNING`, `INFO`, or `DEBUG`.
+</ResponseField>
+
+<ResponseField name="data.issues[].eventCount" type="integer">
+  Total number of events grouped into this issue.
+</ResponseField>
+
+<ResponseField name="data.issues[].firstSeen" type="string">
+  ISO 8601 timestamp of when this issue was first detected.
+</ResponseField>
+
+<ResponseField name="data.issues[].lastSeen" type="string">
+  ISO 8601 timestamp of the most recent event for this issue.
+</ResponseField>
+
+<ResponseField name="data.pagination" type="object">
+  Pagination metadata: `page`, `limit`, `total` (total matching issues), and `pages` (total page count).
+</ResponseField>
+
+---
+
+## Get an Issue
+
+Retrieve full detail for a single issue, including its **10 most recent events**.
+
+```
+GET /api/v1/projects/:projectId/issues/:id
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project the issue belongs to.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The issue's unique ID.
+</ParamField>
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/issues/clxk3a7bc0002qw8e4h9v3rb5 \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Issue fetched",
+  "data": {
+    "id": "clxk3a7bc0002qw8e4h9v3rb5",
+    "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+    "fingerprint": "TypeError-abc123",
+    "title": "TypeError: Cannot read properties of undefined (reading 'id')",
+    "culprit": "app.js in handleClick",
+    "status": "UNRESOLVED",
+    "level": "ERROR",
+    "eventCount": 47,
+    "firstSeen": "2024-07-01T09:12:00.000Z",
+    "lastSeen": "2024-07-15T14:05:33.000Z",
+    "createdAt": "2024-07-01T09:12:00.000Z",
+    "updatedAt": "2024-07-15T14:05:33.000Z",
+    "events": [
+      {
+        "id": "clxk4b8cd0003qw8e5i0w4sc6",
+        "issueId": "clxk3a7bc0002qw8e4h9v3rb5",
+        "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+        "level": "ERROR",
+        "message": "Cannot read properties of undefined (reading 'id')",
+        "timestamp": "2024-07-15T14:05:33.000Z",
+        "receivedAt": "2024-07-15T14:05:34.123Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Update Issue Status
+
+Change the triage status of an issue to `UNRESOLVED`, `RESOLVED`, or `IGNORED`.
+
+```
+PATCH /api/v1/projects/:projectId/issues/:id
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project the issue belongs to.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The issue's unique ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="status" type="string" required>
+  The new status for the issue. Must be one of: `UNRESOLVED`, `RESOLVED`, `IGNORED`.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/issues/clxk3a7bc0002qw8e4h9v3rb5 \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{ "status": "RESOLVED" }'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Issue status updated",
+  "data": {
+    "id": "clxk3a7bc0002qw8e4h9v3rb5",
+    "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+    "fingerprint": "TypeError-abc123",
+    "title": "TypeError: Cannot read properties of undefined (reading 'id')",
+    "culprit": "app.js in handleClick",
+    "status": "RESOLVED",
+    "level": "ERROR",
+    "eventCount": 47,
+    "firstSeen": "2024-07-01T09:12:00.000Z",
+    "lastSeen": "2024-07-15T14:05:33.000Z",
+    "updatedAt": "2024-07-15T15:00:00.000Z"
+  }
+}
+```
+
+## Response Codes
+
+| Status | Meaning                                          |
+|--------|--------------------------------------------------|
+| `200`  | Request succeeded.                               |
+| `400`  | Invalid `status` value in the request body.      |
+| `401`  | Not authenticated — no valid session.            |
+| `404`  | Issue not found in the specified project.        |

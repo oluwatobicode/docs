@@ -1,0 +1,173 @@
+---
+title: "Argus Node.js SDK: Server-Side Error Capture"
+sidebarTitle: "Node.js SDK"
+description: "Install @argus/sdk-node to capture uncaughtException and unhandledRejection events in Node.js apps, with optional Express middleware."
+---
+
+The Argus Node.js SDK integrates with Node's process-level event system, hooking into `process.on('uncaughtException')` and `process.on('unhandledRejection')` to automatically capture every unhandled error in your server application. For Express users, an optional error-handling middleware attaches request context (HTTP method and URL) to every captured error. The SDK has zero runtime dependencies.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install @argus/sdk-node
+```
+
+```bash yarn
+yarn add @argus/sdk-node
+```
+
+```bash pnpm
+pnpm add @argus/sdk-node
+```
+
+</CodeGroup>
+
+## Initialization
+
+<Steps>
+
+### Call `init()` at the top of your entry file
+
+Place `init()` before any routes, middleware, or application logic. This guarantees that the process-level event listeners are registered before anything can throw.
+
+```typescript
+import { init } from '@argus/sdk-node';
+
+init({
+  dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID',
+  environment: 'production',
+  release: '1.0.0',
+});
+
+// Your application logic starts here
+```
+
+### Configure `InitOptions`
+
+`init()` accepts a single `InitOptions` object:
+
+```typescript
+export interface InitOptions {
+  /** Your project DSN (required). Format: https://PUBLIC_KEY@host/PROJECT_ID */
+  dsn: string;
+
+  /** The environment name shown in Argus (e.g. 'production', 'staging'). */
+  environment?: string;
+
+  /** Your application's release version (e.g. '1.4.2' or a git SHA). */
+  release?: string;
+}
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `dsn` | `string` | ✅ | Your Argus project DSN. A malformed DSN throws loudly at startup — fix it before deploying. |
+| `environment` | `string` | — | The deployment environment (e.g. `'production'`, `'staging'`). Shown as a filter in Argus. |
+| `release` | `string` | — | Your application version or release identifier. Use it to correlate errors with deploys. |
+
+</Steps>
+
+## Express Middleware
+
+Add `argusErrorHandler()` as the **last middleware** in your Express application, after all your routes and before your own custom error handler. Argus captures the error with request context, then calls `next(err)` to pass the error along — it observes without swallowing.
+
+```typescript
+import express from 'express';
+import { init, argusErrorHandler } from '@argus/sdk-node';
+
+init({ dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID' });
+
+const app = express();
+
+// Your routes
+app.get('/users/:id', async (req, res, next) => {
+  try {
+    const user = await getUserById(req.params.id);
+    res.json(user);
+  } catch (err) {
+    next(err); // Forward to error handlers
+  }
+});
+
+// Argus middleware — must come after all routes
+app.use(argusErrorHandler());
+
+// Your own error handler runs after Argus
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+app.listen(3000);
+```
+
+Each error captured through the middleware includes the HTTP `method` (e.g. `GET`) and the full request URL from `req.originalUrl`, giving you immediate context in Argus about which endpoint was hit when the error occurred.
+
+<Note>
+`argusErrorHandler()` has no dependency on Express itself — it uses structural typing and works with any framework that follows the standard four-argument Express error-handler signature `(err, req, res, next)`.
+</Note>
+
+## Manual Capture
+
+Use `captureException()` inside `try/catch` blocks when you want to handle an error gracefully and still report it to Argus.
+
+```typescript
+import { captureException } from '@argus/sdk-node';
+
+async function processJob(jobId: string) {
+  try {
+    await runJob(jobId);
+  } catch (err) {
+    captureException(err);
+    // Mark the job as failed and continue processing the queue
+    await markJobFailed(jobId);
+  }
+}
+```
+
+`captureException` accepts any value. If you pass something that is not an `Error` instance, the SDK wraps it in a `new Error(String(value))` before building the event.
+
+## Crash Behavior
+
+<Warning>
+When an `uncaughtException` fires, Argus sends the event to your project and then calls `process.exit(1)`. This matches Node.js's own recommendation: after an uncaught exception, process state is untrustworthy, and continuing to serve requests is unsafe. **Do not rely on `uncaughtException` as a recovery mechanism** — use `try/catch` or domain-level error handling for that.
+
+`unhandledRejection` events are captured and sent to Argus without exiting the process.
+</Warning>
+
+```typescript
+// From init.ts — crash behavior preserved after capture
+process.on('uncaughtException', (err: Error) => {
+  void captureException(err).finally(() => process.exit(1));
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  void captureException(reason); // No exit — process continues
+});
+```
+
+## Non-Error Rejections
+
+If your code rejects a promise with a plain string, number, or object instead of an `Error`, Argus normalizes it automatically. The value is converted to a string and wrapped in a `new Error(...)` before being sent, so you always see a meaningful event in Argus rather than a silent drop.
+
+```typescript
+// These are all captured correctly
+Promise.reject('database connection failed');
+Promise.reject(404);
+Promise.reject({ code: 'TIMEOUT', service: 'payments' });
+```
+
+## Exported API
+
+| Symbol | Kind | Description |
+|---|---|---|
+| `init` | `function` | Initializes the SDK and registers `process.on` listeners. |
+| `captureException` | `function` | Manually captures and sends an exception to Argus. |
+| `argusErrorHandler` | `function` | Returns an Express-compatible four-argument error handler middleware. |
+| `InitOptions` | `interface` | TypeScript type for the `init()` options object. |
+
+```typescript
+import { init, captureException, argusErrorHandler } from '@argus/sdk-node';
+import type { InitOptions } from '@argus/sdk-node';
+```

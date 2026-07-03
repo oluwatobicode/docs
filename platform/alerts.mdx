@@ -1,0 +1,115 @@
+---
+title: "Setting Up Alert Rules in Argus"
+sidebarTitle: "Alerts"
+description: "Create alert rules to receive email or webhook notifications the moment Argus detects a new issue in your project."
+---
+
+Alert rules let you get notified immediately when something goes wrong in your application — without having to check the dashboard manually. When Argus captures an event that creates a brand new issue, it evaluates all active rules for your project and fires every matching notification channel within seconds. Configure an email address, a webhook endpoint, or both, and Argus handles the delivery.
+
+## Alert rule fields
+
+When you create an alert rule, you configure the following fields:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | ✅ | A human-readable label for this rule, e.g. `"Production errors"` |
+| `type` | enum | — | `NEW_ISSUE` fires when a new distinct issue is created (default). `ERROR_RATE` is reserved for a future release. |
+| `notifyEmail` | string | ✅ (or `webhookUrl`) | Email address to send a notification to when the rule fires |
+| `webhookUrl` | string | ✅ (or `notifyEmail`) | URL that receives a `POST` request when the rule fires |
+| `enabled` | boolean | — | Defaults to `true`. Set to `false` to pause the rule without deleting it. |
+
+<Note>
+  You must supply at least one of `notifyEmail` or `webhookUrl` — a rule with neither delivery channel is rejected with a validation error. You can supply both to notify via two channels simultaneously.
+</Note>
+
+## Creating an alert
+
+<Steps>
+  <Step title="Open the Alerts page">
+    Navigate to your project in the Argus dashboard and click **Alerts** in the sidebar.
+  </Step>
+  <Step title="Click New Rule">
+    Click the **New rule** button in the top-right corner of the Alerts page. The alert rule modal opens.
+  </Step>
+  <Step title="Name your rule and choose a type">
+    Enter a descriptive name for the rule. Leave **Type** set to `NEW_ISSUE` — this fires whenever Argus creates a brand new, never-before-seen issue fingerprint in your project.
+  </Step>
+  <Step title="Add a delivery channel">
+    Enter an **email address**, a **webhook URL**, or both. Argus requires at least one.
+  </Step>
+  <Step title="Save the rule">
+    Click **Save**. The rule is active immediately — the next new issue to arrive will trigger a notification.
+  </Step>
+</Steps>
+
+## Webhook payload
+
+When a `NEW_ISSUE` alert fires, Argus sends an HTTP `POST` request to your `webhookUrl` with a JSON body. Use this to integrate with Slack (via incoming webhooks), PagerDuty, or any custom pipeline you operate.
+
+```json
+{
+  "event": "NEW_ISSUE",
+  "issue": {
+    "id": "clx1234abcd",
+    "title": "TypeError: Cannot read properties of undefined",
+    "culprit": "src/api/users.ts",
+    "level": "ERROR",
+    "status": "UNRESOLVED",
+    "eventCount": 1,
+    "firstSeen": "2025-07-03T09:14:55.000Z",
+    "lastSeen": "2025-07-03T09:14:55.000Z",
+    "projectId": "clx0000proj"
+  }
+}
+```
+
+Your endpoint should respond with a `2xx` status code to acknowledge receipt. Argus records the outcome of every delivery attempt in the alert log (see [Alert logs](#alert-logs) below).
+
+## Email notifications
+
+Email notifications are sent via **Resend**. When a new issue triggers an email rule, Argus delivers a message to the configured address containing the issue title, level, culprit, and a direct link to the issue detail view in your dashboard.
+
+Make sure the email address you configure is deliverable — Argus does not verify addresses at rule creation time.
+
+## Managing rules
+
+From the **Alerts** page you can:
+
+- **Edit** a rule — click the pencil icon on any rule card to update its name, delivery channel, or enabled state.
+- **Toggle enabled** — click the toggle switch on a rule card to pause or resume it without deleting it. Paused rules appear dimmed.
+- **Delete** a rule — click the trash icon to permanently remove the rule and all of its logs.
+
+You can also manage rules programmatically via the REST API:
+
+```http
+# List all rules for a project
+GET /api/v1/projects/:projectId/alerts
+
+# Create a new rule
+POST /api/v1/projects/:projectId/alerts
+
+# Update an existing rule
+PATCH /api/v1/projects/:projectId/alerts/:id
+
+# Delete a rule
+DELETE /api/v1/projects/:projectId/alerts/:id
+```
+
+## Alert logs
+
+Every delivery attempt — whether successful or failed — is recorded in the **alert log**. Each log entry captures:
+
+- Which alert rule fired
+- Which channel was used (`email` or `webhook`)
+- The target address or URL
+- Whether delivery succeeded
+- Any error message if delivery failed
+- The timestamp the alert was triggered
+
+View logs directly in the dashboard by opening any alert rule. Use logs to diagnose failed webhook deliveries or to confirm that a notification was sent for a specific issue.
+
+<Tip>
+  Use multiple alert rules to route notifications by severity. For example, create one rule that sends a webhook to your on-call channel for all new issues, and a separate rule with a different email address to notify a specific team member. Combine this with issue-level filters in your downstream tooling to triage by priority.
+</Tip>
+
+For the full list of alert endpoints, see the [Alerts API reference](/api/alerts).

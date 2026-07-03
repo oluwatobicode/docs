@@ -1,0 +1,48 @@
+---
+title: "Using Environments and Releases in Argus"
+sidebarTitle: "Environments"
+description: "Tag your events with environment and release strings so you can filter issues by production, staging, or a specific app version."
+---
+
+Environments and releases let you differentiate signal from noise. When every event is tagged with where it came from (`production`, `staging`) and what version produced it (`1.4.2`, a git commit SHA), you can instantly filter your issue queue to what actually matters — real errors in production — without wading through churn from pre-release deployments or local development.
+
+## Setting environment
+
+Pass an `environment` string to `init()`. This value is attached to every event that SDK instance sends. Common values are `'production'`, `'staging'`, and `'development'`, but you can use any string that makes sense for your deployment pipeline.
+
+```typescript
+init({
+  dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
+  environment: 'production',
+});
+```
+
+Once set, you can filter the Issues view in your Argus dashboard by environment to focus on a specific deployment tier.
+
+## Setting release
+
+Pass a `release` string to `init()`. Use your app version number or a git commit SHA — anything that uniquely identifies the build.
+
+```typescript
+init({
+  dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
+  environment: 'production',
+  release: '1.4.2',  // or process.env.GIT_SHA
+});
+```
+
+Tagging events with a release lets you see exactly which build introduced a regression and whether a fix you deployed actually resolved an issue.
+
+## How they appear in the dashboard
+
+Both `environment` and `release` are embedded in the event envelope at send time. Every issue in your dashboard shows the environment and release it was first seen in, and you can filter the Issues list by either field. If you run multiple environments in a single project, the environment filter is the fastest way to suppress staging noise when you're triaging a production incident.
+
+## Best practices
+
+- **Always set `environment` in production deployments.** Without it, you can't reliably separate production issues from pre-release ones.
+- **Use a build-time constant or environment variable for `release`.** For example, inject your git SHA at build time and read it as `process.env.NEXT_PUBLIC_COMMIT_SHA` (Next.js) or an equivalent for your framework. This removes the risk of forgetting to update a hardcoded version string.
+- **Avoid vague names like `'local'` or `'dev'` in shared or CI environments.** Use environment-specific names (`'ci'`, `'review-app'`) so you can filter them out precisely. Letting non-production noise into your main issue queue makes it harder to spot real regressions.
+
+<Note>
+  Both `environment` and `release` are optional. Argus captures and stores events without them. You'll just have less filtering precision in the dashboard until you add them.
+</Note>

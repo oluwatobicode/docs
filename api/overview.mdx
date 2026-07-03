@@ -1,0 +1,92 @@
+---
+title: "Argus REST API: Overview and Base URL"
+sidebarTitle: "Overview"
+description: "The Argus REST API lets you query issues, manage projects, configure alerts, and ingest events programmatically from any HTTP client."
+---
+
+The Argus REST API gives you programmatic access to every part of the platform — from listing and resolving issues to ingesting raw SDK events. All endpoints live under the `/api/v1` prefix, accept JSON request bodies, and return JSON responses. Use any HTTP client, language, or tool that speaks HTTP to interact with the API.
+
+## Base URL
+
+```
+https://your-domain.com/api/v1
+```
+
+Replace `your-domain.com` with your actual Argus instance hostname. All paths in this documentation are shown relative to this base URL.
+
+<Note>
+  Every request must include the `Content-Type: application/json` header when sending a request body. Argus does not accept form-encoded payloads.
+</Note>
+
+## All Endpoints
+
+The table below lists every endpoint group exposed by the API.
+
+| Group | Base Path | Description |
+|-------|-----------|-------------|
+| Authentication | `/api/v1/auth` | Register, log in, verify email, and manage your session |
+| Projects | `/api/v1/projects` | Create and manage projects within your organization |
+| Issues | `/api/v1/projects/:projectId/issues` | List, view, and update issues captured for a project |
+| Events | `/api/v1/projects/:projectId/issues/:issueId/events` | List the individual events grouped under an issue |
+| Alerts | `/api/v1/projects/:projectId/alerts` | Create and manage alert rules for a project |
+| Performance | `/api/v1/projects/:projectId/performance` | Query transactions and web vitals data |
+| Usage | `/api/v1/usage` | Inspect your monthly event quota and plan information |
+| Ingest | `/api/v1/ingest/:projectId/envelope` | Receive SDK events via DSN authentication |
+
+<Tip>
+  The ingest endpoint uses a separate DSN-based authentication scheme. See [Authentication](/api/authentication) for details on both session cookies and DSN keys.
+</Tip>
+
+## Response Format
+
+Every Argus API response — success or error — follows the same envelope shape.
+
+**Success response:**
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Issues fetched successfully",
+  "data": { ... }
+}
+```
+
+**Error response:**
+
+```json
+{
+  "statusCode": 404,
+  "status": "failed",
+  "message": "Issue not found",
+  "error": { ... }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `statusCode` | `number` | The HTTP status code repeated in the body |
+| `status` | `string` | Either `"success"` or `"failed"` |
+| `message` | `string` | A human-readable description of the outcome |
+| `data` | `object \| array` | Present on successful responses; contains the requested resource |
+| `error` | `object \| string` | Present on error responses; contains error detail |
+
+## Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `400` | **Bad request** — invalid payload or missing required fields |
+| `401` | **Unauthorized** — not logged in, or invalid DSN key |
+| `403` | **Forbidden** — authenticated but not permitted to perform this action |
+| `404` | **Not found** — the requested resource does not exist |
+| `409` | **Conflict** — e.g. the email address is already registered |
+| `429` | **Too many requests** — monthly quota or per-minute rate limit exceeded |
+| `500` | **Internal server error** — something went wrong on the server |
+
+<Warning>
+  The ingest endpoint enforces two separate limits: a per-minute rate limit of 100 events per 60-second window, and a monthly quota tied to your plan (10,000 events on Free; 500,000 on Pro). Requests that exceed either limit receive a `429` response.
+</Warning>
+
+## Next Steps
+
+- [Authentication](/api/authentication) — learn how to log in with session cookies and how DSN keys work for event ingest

@@ -1,0 +1,117 @@
+---
+title: "Performance Monitoring with Argus"
+sidebarTitle: "Performance"
+description: "Argus tracks transaction durations, span timing, and web vitals like LCP, CLS, TTFB, and FCP to surface performance regressions."
+---
+
+Performance monitoring in Argus gives you visibility into how fast — or slow — your application really is. Argus captures transactions (individual units of work like an HTTP request or a page load), breaks them down into child spans, and aggregates web vitals so you can see exactly where time is being spent and catch regressions before your users do. Performance monitoring is available on all plans.
+
+<Note>
+  Performance monitoring is in active development. Transaction ingestion is available now. Web vitals aggregation and TimescaleDB-powered time-series analytics (p50/p75/p95 latency, historical trending) are coming in a future release.
+</Note>
+
+## Transactions
+
+A **transaction** represents a single, discrete unit of work in your application — for example, an HTTP request handled by your server, or the full load sequence of a page in the browser. Argus records each transaction with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | A human-readable label for the operation, e.g. `GET /api/users` or `page.load /dashboard` |
+| `traceId` | string | A unique identifier that links this transaction to a distributed trace |
+| `status` | string | The outcome of the transaction, e.g. `ok`, `error`, or `timeout` |
+| `duration` | number | Total wall-clock time for the transaction, in **milliseconds** |
+| `timestamp` | datetime | When the transaction started |
+
+### Spans
+
+Each transaction contains one or more **spans** that represent sub-operations within the parent work unit. Spans let you pinpoint which part of a request is slow — for example, a database query or a third-party API call.
+
+| Field | Type | Description |
+|---|---|---|
+| `operation` | string | The type of work, e.g. `db.query`, `http.request`, `render` |
+| `description` | string | A human-readable description of the specific operation |
+| `duration` | number | Time taken by this span, in milliseconds |
+| `startTime` | datetime | When this span started |
+| `endTime` | datetime | When this span completed |
+
+Spans nest inside their parent transaction. A single transaction can contain any number of spans, and spans can themselves have a `parentSpanId` linking them to a parent span for deeply nested traces.
+
+## Web vitals
+
+Argus tracks the four core browser web vitals that reflect the real-world user experience of your frontend:
+
+| Vital | Full name | What it measures |
+|---|---|---|
+| **LCP** | Largest Contentful Paint | How long it takes for the largest visible element to render — a measure of perceived load speed |
+| **CLS** | Cumulative Layout Shift | How much the page layout shifts unexpectedly during load — a measure of visual stability |
+| **TTFB** | Time to First Byte | How long the browser waits for the first byte of the server response — a measure of server responsiveness |
+| **FCP** | First Contentful Paint | How long it takes for any content (text, image) to appear on screen — a measure of initial render speed |
+
+Retrieve aggregated web vitals for a project via the API:
+
+```http
+GET /api/v1/projects/:projectId/performance/vitals
+```
+
+## Viewing performance data
+
+To explore performance data in the dashboard:
+
+1. Open your project from the **Projects** console.
+2. Navigate to the **Performance** tab in the project sidebar.
+3. Use the transactions list to browse recent operations sorted by duration.
+4. Click any transaction to expand its span waterfall and inspect where time was spent.
+
+## API access
+
+Use the following endpoints to query performance data programmatically:
+
+### List transactions
+
+```http
+GET /api/v1/projects/:projectId/performance/transactions
+```
+
+Returns a paginated list of transactions for the project, ordered by timestamp descending.
+
+**Example response:**
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Transactions fetched",
+  "data": {
+    "transactions": [
+      {
+        "id": "clx5678txn",
+        "name": "GET /api/users",
+        "traceId": "abc123trace",
+        "status": "ok",
+        "duration": 134.7,
+        "timestamp": "2025-07-03T11:00:00.000Z",
+        "spans": [
+          {
+            "id": "clxspn001",
+            "operation": "db.query",
+            "description": "SELECT * FROM users WHERE org_id = $1",
+            "duration": 98.2,
+            "startTime": "2025-07-03T11:00:00.010Z",
+            "endTime": "2025-07-03T11:00:00.108Z"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Get web vitals
+
+```http
+GET /api/v1/projects/:projectId/performance/vitals
+```
+
+Returns aggregated web vital scores for the project.
+
+For the full list of performance endpoints and request/response schemas, see the [Performance API reference](/api/performance).

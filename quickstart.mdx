@@ -1,47 +1,164 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Argus in 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Install the Argus SDK, paste your DSN, and see your first error captured in the dashboard — all in under 5 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+By the end of this guide you'll have Argus installed in your application, connected to your project via a DSN, and capturing real errors that appear live in your dashboard. The whole process takes about five minutes.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
+  <Step title="Create an account">
+    Go to the [Argus dashboard](https://app.argus.dev) and sign up with your email, Google, or GitHub account.
+
+    If you register with email, Argus sends a one-time passcode (OTP) to your inbox. Enter the code to verify your address and land on your new dashboard.
+  </Step>
+
+  <Step title="Create a project">
+    From the **Projects Console**, click **New Project**. Give your project a name and select the platform that matches your application — **Browser**, **Node.js**, or **React**.
+
+    After Argus creates the project, your **DSN** appears on screen. Copy it now — you'll paste it into your `init()` call in the next step.
+
+    <Tip>
+      Your DSN follows the format `https://PUBLIC_KEY@your-domain.com/PROJECT_ID`. The public key authenticates your SDK with the ingest endpoint; the project ID routes events to the right project. You can find your DSN again at any time under **Project Settings → DSN**.
+    </Tip>
+  </Step>
+
+  <Step title="Install the SDK">
+    Install the package that matches the platform you selected. `@argus/sdk-core` is an internal dependency — you never need to install it directly.
+
+    **Browser**
+    <CodeGroup>
+      ```bash npm
+      npm install @argus/sdk-browser
+      ```
+      ```bash yarn
+      yarn add @argus/sdk-browser
+      ```
+      ```bash pnpm
+      pnpm add @argus/sdk-browser
+      ```
+    </CodeGroup>
+
+    **Node.js**
+    <CodeGroup>
+      ```bash npm
+      npm install @argus/sdk-node
+      ```
+      ```bash yarn
+      yarn add @argus/sdk-node
+      ```
+      ```bash pnpm
+      pnpm add @argus/sdk-node
+      ```
+    </CodeGroup>
+
+    **React**
+    <CodeGroup>
+      ```bash npm
+      npm install @argus/sdk-react
+      ```
+      ```bash yarn
+      yarn add @argus/sdk-react
+      ```
+      ```bash pnpm
+      pnpm add @argus/sdk-react
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Initialize Argus">
+    Call `init()` once, as early as possible in your application's entry point, with the DSN you copied in Step 2. From that point on, Argus automatically captures all uncaught exceptions and unhandled promise rejections — no additional code required.
+
+    **Browser** — add this before any other application code in your entry file:
+
+    ```ts
+    import { init } from '@argus/sdk-browser';
+
+    init({
+      dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
+      environment: 'production', // optional
+      release: '1.0.0',          // optional — tie errors to a deploy
+    });
+    ```
+
+    Argus hooks into `window.onerror` and `unhandledrejection`. It chains any handler you already have in place — nothing gets replaced.
+
+    ---
+
+    **Node.js** — initialize at the very top of your server entry file:
+
+    ```ts
+    import { init, captureException, argusErrorHandler } from '@argus/sdk-node';
+
+    init({
+      dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
+      environment: 'production',
+      release: '1.0.0',
+    });
+
+    // Express apps: mount after all routes, before your own error handler
+    app.use(argusErrorHandler());
+    ```
+
+    Argus listens for `uncaughtException` (captures then exits with code `1`, preserving Node's expected crash behaviour) and `unhandledRejection` (captures without exiting).
+
+    ---
+
+    **React** — initialize once and wrap your component tree with `<ArgusErrorBoundary>`:
+
+    ```tsx
+    import { init, ArgusErrorBoundary } from '@argus/sdk-react';
+
+    init({
+      dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
+      environment: 'production',
+      release: '1.0.0',
+    });
+
+    export function App() {
+      return (
+        <ArgusErrorBoundary fallback={<p>Something went wrong.</p>}>
+          <YourApp />
+        </ArgusErrorBoundary>
+      );
+    }
+    ```
+
+    <Note>
+      React render-cycle crashes don't reach `window.onerror` in production builds. `<ArgusErrorBoundary>` uses `componentDidCatch` — the only reliable hook for render errors — and attaches the crashing component name as a tag on the captured event.
+    </Note>
+
+    You can also capture errors manually anywhere in your code:
+
+    ```ts
+    import { captureException } from '@argus/sdk-react'; // or sdk-browser / sdk-node
+
+    try {
+      riskyOperation();
+    } catch (err) {
+      captureException(err);
+    }
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+  <Step title="Verify in the dashboard">
+    Trigger an error in your application — throw an exception, reject a promise, or let a component crash — then open the Argus dashboard and navigate to **Issues**.
 
-    ```bash
-    your-cli start
-    ```
+    Your first error should appear within a few seconds. Click into it to see the full stack trace, environment, release, and request context Argus captured automatically.
+
+    <Tip>
+      Not seeing your event? Double-check that you pasted the full DSN (including the `https://` prefix and the project ID path segment). Check your browser's Network tab or Node console for any `401` or `400` responses from the ingest endpoint.
+    </Tip>
   </Step>
+
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Next Steps
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+Now that you're capturing errors, explore what Argus can do:
+
+- **[Browser SDK reference](/sdks/browser)** — manual capture, `release` tagging, and cross-origin script handling
+- **[Node.js SDK reference](/sdks/node)** — Express middleware, environment variables, and uncaught exception behaviour
+- **[React SDK reference](/sdks/react)** — `<ArgusErrorBoundary>` props, nested boundaries, and fallback UI patterns
+- **[Alert rules](/platform/alerts)** — get notified by email or webhook the moment a new issue opens

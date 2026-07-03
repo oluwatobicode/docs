@@ -1,0 +1,266 @@
+---
+title: "REST API Endpoints for Argus Alert Rules"
+sidebarTitle: "Alerts"
+description: "Create, list, update, and delete alert rules that notify you by email or webhook when a new issue is detected."
+---
+
+Alert rules trigger notifications whenever Argus detects a condition matching the rule's criteria — for example, a new issue being created or an error rate crossing a threshold. You configure each rule with at least one delivery channel: an email address, a webhook URL, or both. You can create multiple rules per project to route notifications to different people or services.
+
+## Authentication
+
+All alert endpoints require an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## List Alert Rules
+
+Retrieve all alert rules configured for a project, ordered by creation date descending.
+
+```
+GET /api/v1/projects/:projectId/alerts
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project whose alert rules you want to list.
+</ParamField>
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/alerts \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Alerts fetched",
+  "data": [
+    {
+      "id": "clxk5c9de0004qw8e6j1x5td7",
+      "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+      "name": "Notify on new issues",
+      "type": "NEW_ISSUE",
+      "threshold": null,
+      "windowMinutes": null,
+      "notifyEmail": "oncall@example.com",
+      "webhookUrl": null,
+      "enabled": true,
+      "lastTriggeredAt": "2024-07-15T14:05:34.000Z",
+      "createdAt": "2024-07-01T10:00:00.000Z",
+      "updatedAt": "2024-07-15T14:05:34.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## Create an Alert Rule
+
+Add a new alert rule to a project. You must provide at least one delivery channel (`notifyEmail` or `webhookUrl`).
+
+```
+POST /api/v1/projects/:projectId/alerts
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project to add the alert rule to.
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  A descriptive name for the alert rule, e.g. `"Notify on-call for new errors"`.
+</ParamField>
+
+<ParamField body="type" type="string">
+  The trigger condition. Accepted values:
+  - `NEW_ISSUE` — fires when a new unique issue is first seen. This is the default.
+  - `ERROR_RATE` — fires when the error rate exceeds a threshold within a time window. Requires `threshold` and `windowMinutes`.
+
+  Defaults to `NEW_ISSUE`.
+</ParamField>
+
+<ParamField body="notifyEmail" type="string">
+  The email address to send alert notifications to. Must be a valid email address. At least one of `notifyEmail` or `webhookUrl` is required.
+</ParamField>
+
+<ParamField body="webhookUrl" type="string">
+  A URL to POST alert payloads to. Must be a valid URL. At least one of `notifyEmail` or `webhookUrl` is required.
+</ParamField>
+
+<ParamField body="threshold" type="integer">
+  For `ERROR_RATE` rules only: the number of errors that must occur within `windowMinutes` to trigger the alert. Must be a positive integer.
+</ParamField>
+
+<ParamField body="windowMinutes" type="integer">
+  For `ERROR_RATE` rules only: the rolling time window in minutes. Must be a positive integer.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Whether the rule is active. Defaults to `true`. Set to `false` to create a rule in a disabled state.
+</ParamField>
+
+### Example Request — Email notification on new issue
+
+```bash
+curl -X POST https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/alerts \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{
+    "name": "Notify on-call for new issues",
+    "type": "NEW_ISSUE",
+    "notifyEmail": "oncall@example.com"
+  }'
+```
+
+### Example Request — Webhook on error rate spike
+
+```bash
+curl -X POST https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/alerts \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{
+    "name": "Webhook on high error rate",
+    "type": "ERROR_RATE",
+    "threshold": 50,
+    "windowMinutes": 5,
+    "webhookUrl": "https://hooks.example.com/argus-alerts"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 201,
+  "status": "success",
+  "message": "Alert created",
+  "data": {
+    "id": "clxk5c9de0004qw8e6j1x5td7",
+    "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+    "name": "Notify on-call for new issues",
+    "type": "NEW_ISSUE",
+    "threshold": null,
+    "windowMinutes": null,
+    "notifyEmail": "oncall@example.com",
+    "webhookUrl": null,
+    "enabled": true,
+    "lastTriggeredAt": null,
+    "createdAt": "2024-07-15T16:00:00.000Z",
+    "updatedAt": "2024-07-15T16:00:00.000Z"
+  }
+}
+```
+
+---
+
+## Update an Alert Rule
+
+Update any subset of fields on an existing alert rule. You only need to include the fields you want to change.
+
+```
+PATCH /api/v1/projects/:projectId/alerts/:id
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project the alert rule belongs to.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The ID of the alert rule to update.
+</ParamField>
+
+### Request Body
+
+All fields are optional. Supply only the fields you want to change. The same field rules from [Create an Alert Rule](#create-an-alert-rule) apply.
+
+### Example Request — Disable an alert
+
+```bash
+curl -X PATCH https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/alerts/clxk5c9de0004qw8e6j1x5td7 \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{ "enabled": false }'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Alert updated",
+  "data": {
+    "id": "clxk5c9de0004qw8e6j1x5td7",
+    "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+    "name": "Notify on-call for new issues",
+    "type": "NEW_ISSUE",
+    "threshold": null,
+    "windowMinutes": null,
+    "notifyEmail": "oncall@example.com",
+    "webhookUrl": null,
+    "enabled": false,
+    "lastTriggeredAt": "2024-07-15T14:05:34.000Z",
+    "createdAt": "2024-07-15T16:00:00.000Z",
+    "updatedAt": "2024-07-15T16:30:00.000Z"
+  }
+}
+```
+
+---
+
+## Delete an Alert Rule
+
+Permanently remove an alert rule from a project. This action is irreversible.
+
+```
+DELETE /api/v1/projects/:projectId/alerts/:id
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project the alert rule belongs to.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The ID of the alert rule to delete.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/alerts/clxk5c9de0004qw8e6j1x5td7 \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Alert deleted"
+}
+```
+
+## Response Codes
+
+| Status | Meaning                                                       |
+|--------|---------------------------------------------------------------|
+| `200`  | Request succeeded.                                            |
+| `201`  | Alert rule created successfully.                              |
+| `400`  | Validation error — check that at least one delivery channel is provided. |
+| `401`  | Not authenticated — no valid session.                         |
+| `404`  | Project or alert rule not found.                              |

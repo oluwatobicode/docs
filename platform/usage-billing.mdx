@@ -1,0 +1,96 @@
+---
+title: "Usage, Quotas & Billing Plans in Argus"
+sidebarTitle: "Usage & Billing"
+description: "Understand your monthly event quota, track usage in the dashboard, and upgrade to the Pro plan when your app needs more capacity."
+---
+
+Argus enforces a monthly event quota per organization. Every error event, transaction, and performance entry your SDK sends counts toward that quota. Understanding your usage — and knowing what happens when you approach the limit — helps you plan ahead and choose the right plan before you hit a wall in production.
+
+## Plans
+
+| Plan | Events / month | Projects | Price |
+|---|---|---|---|
+| Free | 10,000 | 1 | $0 |
+| Pro | 500,000 | Unlimited | $12/mo |
+
+<Warning>
+  The Free tier is limited to **1 project**. If you need to monitor multiple applications or environments, upgrade to Pro for unlimited projects.
+</Warning>
+
+## How quotas work
+
+Argus enforces your quota atomically at the ingest layer — every incoming event is checked and counted in a single operation before it is accepted. This design means:
+
+- **No silent overages.** Argus cannot accept more events than your plan allows, even under a sudden burst of traffic.
+- **HTTP 429 on limit reached.** When your organization exhausts its monthly quota, the ingest endpoint returns `429 Too Many Requests`. Events sent after this point are dropped.
+- **SDK behavior.** The Argus SDKs treat `429` responses silently — they drop the event, do not retry, and do not throw an error into your application. Your app continues running normally; only Argus capture stops.
+- **Monthly reset.** Your quota resets automatically at the start of each calendar month (UTC). You do not need to take any action.
+
+## Viewing your usage
+
+Open the **Usage** page in the Argus dashboard to see a live snapshot of your organization's current-month consumption:
+
+- **Used / Limit** — total events ingested this month versus your plan's monthly ceiling.
+- **Breakdown by level** — how your event count is split across errors (ERROR + FATAL), warnings (WARNING), and info (INFO + DEBUG).
+- **Current plan** — which plan your organization is on and a shortcut to upgrade.
+
+## Usage API
+
+Fetch your current usage programmatically with a single endpoint:
+
+```http
+GET /api/v1/usage
+Authorization: <session cookie or bearer token>
+```
+
+**Example response:**
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Usage fetched",
+  "data": {
+    "plan": "FREE",
+    "used": 7430,
+    "limit": 10000,
+    "month": "2025-07",
+    "breakdown": {
+      "errors": 6100,
+      "warnings": 920,
+      "info": 410
+    }
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `plan` | `"FREE"` \| `"PRO"` | The organization's current plan |
+| `used` | number | Events ingested so far this calendar month |
+| `limit` | number | Monthly event ceiling for the current plan |
+| `month` | string | The current billing month in `YYYY-MM` format |
+| `breakdown.errors` | number | Count of ERROR and FATAL events this month |
+| `breakdown.warnings` | number | Count of WARNING events this month |
+| `breakdown.info` | number | Count of INFO and DEBUG events this month |
+
+## Upgrading to Pro
+
+When you are ready to raise your limit or add more projects, upgrade directly from the dashboard:
+
+<Steps>
+  <Step title="Open the Billing section">
+    Click **Usage** or **Billing** in the dashboard sidebar. Your current plan and usage meter are displayed at the top of the page.
+  </Step>
+  <Step title="Click Upgrade">
+    Click the **Upgrade** button. Argus redirects you to a secure checkout session powered by **Polar**.
+  </Step>
+  <Step title="Complete checkout">
+    Enter your payment details in the Polar checkout flow. Your plan upgrades immediately upon successful payment — no restart required.
+  </Step>
+  <Step title="Confirm your new limits">
+    Return to the Usage page. Your plan now shows **PRO**, your limit is 500,000 events/month, and the 1-project restriction is removed.
+  </Step>
+</Steps>
+
+For the full usage endpoint reference, see the [Usage API reference](/api/usage).

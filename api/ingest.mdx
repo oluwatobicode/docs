@@ -1,0 +1,217 @@
+---
+title: "POST /ingest/:projectId/envelope — Event Ingest"
+sidebarTitle: "Ingest"
+description: "Send error events to Argus using the envelope format. Used by the official SDKs; reference this if you build a custom integration."
+---
+
+The ingest endpoint is how the Argus SDKs send error events to the platform. You normally don't call it directly — the SDK handles serialization, batching, and auth for you. However, this reference is useful when you're building a custom integration, writing a platform-specific SDK, or debugging exactly what your client is transmitting.
+
+## Endpoint
+
+```
+POST /api/v1/ingest/:projectId/envelope
+```
+
+## Authentication
+
+This endpoint uses **DSN key authentication**, not a session cookie. Pass your project's public key in the `X-Argus-Auth` request header. You can find your DSN public key in **Project Settings → Client Keys**.
+
+```
+X-Argus-Auth: YOUR_PUBLIC_KEY
+```
+
+Session-based auth tokens are not accepted here. Use the DSN key.
+
+## Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The project ID extracted from your DSN. The DSN format is
+  `https://<publicKey>@<host>/<projectId>` — the path segment after the host is your `projectId`.
+</ParamField>
+
+## Request Body
+
+Send a JSON object conforming to the envelope schema below. The `exception` field is the only required top-level key.
+
+### Top-level fields
+
+<ParamField body="exception" type="object" required>
+  The error payload. Contains the exception class, message, and full stack trace. See the [Exception object](#exception-object) section for the full shape.
+</ParamField>
+
+<ParamField body="level" type="string">
+  Severity level of the event. Accepted values: `fatal`, `error`, `warning`, `info`, `debug`.
+  Defaults to `error`.
+</ParamField>
+
+<ParamField body="timestamp" type="number">
+  When the error occurred, expressed as **milliseconds since the Unix epoch** (i.e. the value of `Date.now()`). Must be ≥ `1577836800000` (2020-01-01). Omit this field to let the server use the receipt time.
+</ParamField>
+
+<ParamField body="environment" type="string">
+  The deployment environment, e.g. `production`, `staging`, or `development`.
+</ParamField>
+
+<ParamField body="release" type="string">
+  The release identifier for your application, e.g. a semantic version `1.4.2` or a Git SHA.
+</ParamField>
+
+<ParamField body="user" type="object">
+  Information about the affected user. Both fields are optional but at least one improves issue triage.
+
+  | Field   | Type   | Description             |
+  |---------|--------|-------------------------|
+  | `id`    | string | Your internal user ID   |
+  | `email` | string | User's email address    |
+</ParamField>
+
+<ParamField body="breadcrumbs" type="array">
+  An ordered list of events that led up to the error — navigation changes, log lines, network requests, etc. Maximum **100** breadcrumbs per envelope.
+
+  Each breadcrumb has the following fields:
+
+  | Field       | Type   | Required | Description                              |
+  |-------------|--------|----------|------------------------------------------|
+  | `type`      | string | ✅        | Category label, e.g. `navigation`, `http` |
+  | `message`   | string | —        | Human-readable description               |
+  | `timestamp` | number | —        | Milliseconds since epoch (Date.now())    |
+  | `data`      | object | —        | Arbitrary key/value metadata             |
+</ParamField>
+
+<ParamField body="tags" type="object">
+  A flat `Record<string, string>` of arbitrary tags you want to associate with this event, e.g. `{ "region": "us-east-1", "tenant": "acme" }`. All keys and values must be strings.
+</ParamField>
+
+<ParamField body="request" type="object">
+  Metadata about the HTTP request that triggered the error.
+
+  | Field     | Type                    | Description              |
+  |-----------|-------------------------|--------------------------|
+  | `url`     | string                  | Full request URL         |
+  | `method`  | string                  | HTTP method              |
+  | `headers` | `Record<string, string>` | Request headers map      |
+</ParamField>
+
+<ParamField body="contexts" type="object">
+  Runtime context details about the client environment.
+
+  | Field             | Type   | Description                       |
+  |-------------------|--------|-----------------------------------|
+  | `browser.name`    | string | Browser name, e.g. `Chrome`       |
+  | `browser.version` | string | Browser version, e.g. `125.0`     |
+  | `os.name`         | string | Operating system, e.g. `macOS`    |
+  | `os.version`      | string | OS version, e.g. `14.4`           |
+</ParamField>
+
+### Exception object
+
+The `exception` object is required and must include a non-empty stack trace.
+
+<ParamField body="exception.type" type="string" required>
+  The error class name, e.g. `TypeError`, `RangeError`, or your custom exception class.
+</ParamField>
+
+<ParamField body="exception.value" type="string" required>
+  The error message string, e.g. `Cannot read properties of undefined (reading 'id')`.
+</ParamField>
+
+<ParamField body="exception.stacktrace.frames" type="array" required>
+  An array of stack frames in **innermost-first** order (the frame at index `0` is the throw site). Must contain at least one frame.
+
+  | Field      | Type    | Required | Description                             |
+  |------------|---------|----------|-----------------------------------------|
+  | `filename` | string  | ✅        | Source file path or URL                 |
+  | `lineno`   | integer | ✅        | Line number (must be a positive integer)|
+  | `function` | string  | —        | Function or method name                 |
+  | `colno`    | integer | —        | Column number                           |
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/v1/ingest/PROJECT_ID/envelope \
+  -H 'Content-Type: application/json' \
+  -H 'X-Argus-Auth: YOUR_PUBLIC_KEY' \
+  -d '{
+    "level": "error",
+    "timestamp": 1720000000000,
+    "environment": "production",
+    "release": "1.4.2",
+    "exception": {
+      "type": "TypeError",
+      "value": "Cannot read property of undefined",
+      "stacktrace": {
+        "frames": [
+          {
+            "filename": "app.js",
+            "function": "handleClick",
+            "lineno": 42,
+            "colno": 7
+          },
+          {
+            "filename": "app.js",
+            "function": "dispatchEvent",
+            "lineno": 18
+          }
+        ]
+      }
+    },
+    "user": {
+      "id": "usr_01HX",
+      "email": "alice@example.com"
+    },
+    "tags": {
+      "region": "us-east-1"
+    },
+    "breadcrumbs": [
+      {
+        "type": "navigation",
+        "message": "Navigated to /dashboard",
+        "timestamp": 1719999990000
+      }
+    ],
+    "contexts": {
+      "browser": { "name": "Chrome", "version": "125.0" },
+      "os": { "name": "macOS", "version": "14.4" }
+    }
+  }'
+```
+
+## Responses
+
+| Status | Meaning                                                                                  |
+|--------|------------------------------------------------------------------------------------------|
+| `200`  | Event accepted and queued for processing.                                                |
+| `400`  | Invalid envelope — validation failed. The response body contains Zod field-level errors. |
+| `401`  | Missing or invalid DSN public key in `X-Argus-Auth`.                                     |
+| `429`  | Rate limit or monthly event quota exceeded.                                              |
+
+### 200 — Queued
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Event received"
+}
+```
+
+### 400 — Validation Error
+
+```json
+{
+  "statusCode": 400,
+  "status": "failed",
+  "message": "Validation error",
+  "error": [
+    {
+      "path": ["exception", "stacktrace", "frames"],
+      "message": "Array must contain at least 1 element(s)"
+    }
+  ]
+}
+```
+
+<Warning>
+  **Timestamp must be in milliseconds, not seconds.** Always use `Date.now()` (e.g. `1720000000000`), never `Math.floor(Date.now() / 1000)`. The validator enforces a lower bound of `1577836800000` (2020-01-01); a Unix seconds value (~`1.7e9`) falls well below this bound and is rejected with HTTP 400.
+</Warning>

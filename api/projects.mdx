@@ -1,0 +1,267 @@
+---
+title: "REST API Endpoints for Argus Projects"
+sidebarTitle: "Projects"
+description: "Create, read, update, and delete Argus projects via the REST API. Each project gets a unique DSN for SDK event ingest."
+---
+
+Projects are the top-level resource in Argus. Every error event, issue, alert rule, and performance trace belongs to a project. When you create a project, Argus automatically generates a unique **DSN** (Data Source Name) containing a public key — this is what you pass to your SDK or custom integration to ingest events.
+
+## Authentication
+
+All project endpoints require an active session. Log in via the Argus dashboard or the auth API before calling these endpoints. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## List Projects
+
+Retrieve all projects in your organization, including their DSN keys.
+
+```
+GET /api/v1/projects
+```
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Projects fetched",
+  "data": [
+    {
+      "id": "clxk2m9ab0000qw8e3f7t1pz2",
+      "orgId": "clxk2m0000001qw8e9abc1234",
+      "name": "My Web App",
+      "slug": "my-web-app",
+      "platform": "javascript",
+      "createdAt": "2024-07-01T10:00:00.000Z",
+      "updatedAt": "2024-07-01T10:00:00.000Z",
+      "keys": [
+        {
+          "id": "clxk2m9cd0001qw8e5g8u2qa3",
+          "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+          "label": "Default",
+          "publicKey": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "dsn": "https://a1b2c3d4-e5f6-7890-abcd-ef1234567890@your-domain.com/clxk2m9ab0000qw8e3f7t1pz2",
+          "createdAt": "2024-07-01T10:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Create a Project
+
+Create a new project in your organization. Argus generates a slug from the `name` you provide and automatically provisions a DSN key.
+
+```
+POST /api/v1/projects
+```
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  The display name for the project. Argus derives the URL slug from this value.
+</ParamField>
+
+<ParamField body="platform" type="string">
+  Optional platform identifier, e.g. `javascript`, `node`, `python`, `react-native`. Used for display purposes in the dashboard.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/v1/projects \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{
+    "name": "My Web App",
+    "platform": "javascript"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 201,
+  "status": "success",
+  "message": "Project created",
+  "data": {
+    "id": "clxk2m9ab0000qw8e3f7t1pz2",
+    "orgId": "clxk2m0000001qw8e9abc1234",
+    "name": "My Web App",
+    "slug": "my-web-app",
+    "platform": "javascript",
+    "createdAt": "2024-07-01T10:00:00.000Z",
+    "updatedAt": "2024-07-01T10:00:00.000Z",
+    "keys": [
+      {
+        "id": "clxk2m9cd0001qw8e5g8u2qa3",
+        "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+        "label": "Default",
+        "publicKey": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "dsn": "https://a1b2c3d4-e5f6-7890-abcd-ef1234567890@your-domain.com/clxk2m9ab0000qw8e3f7t1pz2",
+        "createdAt": "2024-07-01T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+<Warning>
+  **Free plan allows only one project.** If your organization is on the Free plan and already has a project, this endpoint returns `400 Bad Request`. Upgrade to Pro to create additional projects.
+</Warning>
+
+---
+
+## Get a Project
+
+Retrieve a single project by its ID, including all DSN keys.
+
+```
+GET /api/v1/projects/:id
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project's unique ID (the `id` field returned when you created the project).
+</ParamField>
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2 \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "id": "clxk2m9ab0000qw8e3f7t1pz2",
+    "orgId": "clxk2m0000001qw8e9abc1234",
+    "name": "My Web App",
+    "slug": "my-web-app",
+    "platform": "javascript",
+    "createdAt": "2024-07-01T10:00:00.000Z",
+    "updatedAt": "2024-07-01T10:00:00.000Z",
+    "keys": [
+      {
+        "id": "clxk2m9cd0001qw8e5g8u2qa3",
+        "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+        "label": "Default",
+        "publicKey": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "dsn": "https://a1b2c3d4-e5f6-7890-abcd-ef1234567890@your-domain.com/clxk2m9ab0000qw8e3f7t1pz2",
+        "createdAt": "2024-07-01T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Update a Project
+
+Update the display name of an existing project. The slug is not automatically updated when you rename a project.
+
+```
+PATCH /api/v1/projects/:id
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project's unique ID.
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  The new display name for the project.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2 \
+  -H 'Content-Type: application/json' \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE' \
+  -d '{ "name": "My Web App (Prod)" }'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Project updated",
+  "data": {
+    "id": "clxk2m9ab0000qw8e3f7t1pz2",
+    "name": "My Web App (Prod)",
+    "slug": "my-web-app",
+    "platform": "javascript",
+    "updatedAt": "2024-07-15T08:30:00.000Z"
+  }
+}
+```
+
+---
+
+## Delete a Project
+
+Permanently delete a project. This action is **irreversible** and cascades to all associated issues, events, alert rules, and DSN keys.
+
+```
+DELETE /api/v1/projects/:id
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project's unique ID.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2 \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Project deleted"
+}
+```
+
+## Response Codes
+
+| Status | Meaning                                              |
+|--------|------------------------------------------------------|
+| `200`  | Request succeeded.                                   |
+| `201`  | Project created successfully.                        |
+| `400`  | Validation error or Free plan project limit reached. |
+| `401`  | Not authenticated — no valid session.                |
+| `404`  | Project not found, or it doesn't belong to your org. |

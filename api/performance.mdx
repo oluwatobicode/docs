@@ -1,0 +1,177 @@
+---
+title: "REST API Endpoints for Argus Performance Data"
+sidebarTitle: "Performance"
+description: "Query transaction durations and web vitals for your project via the Argus performance API endpoints."
+---
+
+The performance API gives you programmatic access to transaction traces and web vitals data collected by your project. You can query transactions to analyze slow operations and retrieve web vitals measurements — LCP, CLS, TTFB, and FCP — to track your application's real-user performance over time.
+
+<Note>
+  Performance monitoring is in active development. The endpoints listed here are available, but full aggregation features — percentile breakdowns, time-series queries, and alerting on performance regressions — are coming soon.
+</Note>
+
+## Authentication
+
+Both performance endpoints require an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+---
+
+## List Transactions
+
+Retrieve the transaction records collected for a project. Each transaction represents a traced operation — a page load, an API request, a background job — with a name, trace ID, HTTP or custom status, and duration in milliseconds.
+
+```
+GET /api/v1/projects/:projectId/performance/transactions
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project whose transactions you want to retrieve.
+</ParamField>
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/transactions \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Transactions fetched",
+  "data": [
+    {
+      "id": "clxk6d0ef0005qw8e7k2y6ue8",
+      "projectId": "clxk2m9ab0000qw8e3f7t1pz2",
+      "name": "GET /api/users/:id",
+      "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+      "status": "ok",
+      "duration": 143.7,
+      "timestamp": "2024-07-15T14:00:00.000Z",
+      "createdAt": "2024-07-15T14:00:00.123Z"
+    }
+  ]
+}
+```
+
+### Response Fields
+
+<ResponseField name="data" type="array">
+  Array of transaction objects.
+</ResponseField>
+
+<ResponseField name="data[].id" type="string">
+  Unique identifier for the transaction record.
+</ResponseField>
+
+<ResponseField name="data[].projectId" type="string">
+  ID of the project this transaction belongs to.
+</ResponseField>
+
+<ResponseField name="data[].name" type="string">
+  The transaction name — typically an HTTP route pattern (e.g. `GET /api/users/:id`) or a custom operation label.
+</ResponseField>
+
+<ResponseField name="data[].traceId" type="string">
+  The distributed trace ID. Use this to correlate spans and transactions across services.
+</ResponseField>
+
+<ResponseField name="data[].status" type="string">
+  The outcome of the transaction, e.g. `ok`, `error`, `cancelled`.
+</ResponseField>
+
+<ResponseField name="data[].duration" type="number">
+  The total transaction duration in **milliseconds**.
+</ResponseField>
+
+<ResponseField name="data[].timestamp" type="string">
+  ISO 8601 timestamp of when the transaction started.
+</ResponseField>
+
+---
+
+## Get Web Vitals
+
+Retrieve web vitals measurements for a project. Web vitals reflect the real-user experience of your web application across four key metrics: Largest Contentful Paint (LCP), Cumulative Layout Shift (CLS), Time to First Byte (TTFB), and First Contentful Paint (FCP).
+
+```
+GET /api/v1/projects/:projectId/performance/vitals
+```
+
+### Path Parameters
+
+<ParamField path="projectId" type="string" required>
+  The ID of the project whose web vitals you want to retrieve.
+</ParamField>
+
+### Example Request
+
+```bash
+curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/vitals \
+  -H 'Cookie: session=YOUR_SESSION_COOKIE'
+```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Web vitals fetched",
+  "data": {
+    "lcp": {
+      "p50": 1820.5,
+      "p75": 2450.3,
+      "p95": 4100.0
+    },
+    "cls": {
+      "p50": 0.05,
+      "p75": 0.12,
+      "p95": 0.31
+    },
+    "ttfb": {
+      "p50": 210.0,
+      "p75": 340.0,
+      "p95": 780.0
+    },
+    "fcp": {
+      "p50": 980.0,
+      "p75": 1450.0,
+      "p95": 2800.0
+    }
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="data.lcp" type="object">
+  Largest Contentful Paint — measures loading performance. Google recommends your LCP p75 stay below **2.5 seconds**.
+</ResponseField>
+
+<ResponseField name="data.cls" type="object">
+  Cumulative Layout Shift — measures visual stability. Google recommends your CLS p75 stay below **0.1**.
+</ResponseField>
+
+<ResponseField name="data.ttfb" type="object">
+  Time to First Byte — measures server response time. A TTFB p75 below **800 ms** is generally considered good.
+</ResponseField>
+
+<ResponseField name="data.fcp" type="object">
+  First Contentful Paint — measures when the browser renders the first piece of content. A p75 below **1.8 seconds** is recommended.
+</ResponseField>
+
+Each vitals object contains `p50`, `p75`, and `p95` percentile values. LCP, TTFB, and FCP values are in **milliseconds**. CLS is a dimensionless score.
+
+## Response Codes
+
+| Status | Meaning                                          |
+|--------|--------------------------------------------------|
+| `200`  | Request succeeded.                               |
+| `401`  | Not authenticated — no valid session.            |
+| `404`  | Project not found.                               |

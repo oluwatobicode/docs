@@ -1,0 +1,124 @@
+{
+  "projectType": "saas",
+  "projectName": "Argus",
+  "projectDescription": "Argus is an error tracking and performance monitoring platform that captures, groups, and alerts on exceptions across browser, Node.js, and React applications.",
+  "theme": "luma",
+  "primaryColor": "#754b2a",
+  "lightColor": "#ece0c1",
+  "darkColor": "#2f2820",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "core-concepts"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "sdks/browser",
+              "sdks/node",
+              "sdks/react"
+            ]
+          },
+          {
+            "group": "Platform",
+            "pages": [
+              "platform/issues",
+              "platform/alerts",
+              "platform/performance",
+              "platform/usage-billing"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/dsn",
+              "configuration/environments",
+              "configuration/projects"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "troubleshooting",
+              "faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/ingest",
+              "api/projects",
+              "api/issues",
+              "api/events",
+              "api/alerts",
+              "api/performance",
+              "api/usage"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automatic error capture for browser, Node.js, and React applications",
+    "Intelligent issue grouping via SHA-256 stack fingerprinting — duplicates collapse into one issue",
+    "Full stack traces with file, function, line and column numbers",
+    "Alert rules with email and webhook delivery on new issues",
+    "Per-project DSN-based authentication for SDK ingest",
+    "Free and Pro plans with monthly event quotas",
+    "React ErrorBoundary component for render-time crash capture",
+    "Express error-handler middleware for server-side capture",
+    "Issue status management — resolve, ignore, or track unresolved errors",
+    "Performance monitoring for transactions and web vitals (planned)"
+  ],
+  "publicApiSurface": [
+    "init(options: InitOptions) — @argus/sdk-browser, @argus/sdk-node, @argus/sdk-react",
+    "captureException(err, extra?) — @argus/sdk-browser, @argus/sdk-node, @argus/sdk-react",
+    "ArgusErrorBoundary — @argus/sdk-react React component",
+    "argusErrorHandler() — @argus/sdk-node Express middleware",
+    "POST /api/v1/ingest/:projectId/envelope — SDK event ingest",
+    "GET /api/v1/projects — list projects",
+    "POST /api/v1/projects — create project",
+    "GET /api/v1/projects/:id — get project",
+    "PATCH /api/v1/projects/:id — update project",
+    "DELETE /api/v1/projects/:id — delete project",
+    "GET /api/v1/projects/:projectId/issues — list issues (paginated, filterable by status/level)",
+    "GET /api/v1/projects/:projectId/issues/:id — get issue detail",
+    "PATCH /api/v1/projects/:projectId/issues/:id — update issue status (UNRESOLVED/RESOLVED/IGNORED)",
+    "GET /api/v1/projects/:projectId/issues/:issueId/events — list events for an issue",
+    "GET /api/v1/projects/:projectId/alerts — list alert rules",
+    "POST /api/v1/projects/:projectId/alerts — create alert rule",
+    "PATCH /api/v1/projects/:projectId/alerts/:id — update alert rule",
+    "DELETE /api/v1/projects/:projectId/alerts/:id — delete alert rule",
+    "GET /api/v1/projects/:projectId/performance/transactions — list transactions",
+    "GET /api/v1/projects/:projectId/performance/vitals — get web vitals",
+    "GET /api/v1/usage — get current event quota usage",
+    "POST /api/v1/auth/register — register with email+password",
+    "POST /api/v1/auth/login — log in",
+    "POST /api/v1/auth/logout — log out",
+    "GET /api/v1/auth/me — get current user + organization",
+    "POST /api/v1/auth/verify-otp — verify email OTP",
+    "GET /api/v1/auth/google — Google OAuth",
+    "GET /api/v1/auth/github — GitHub OAuth"
+  ]
+}

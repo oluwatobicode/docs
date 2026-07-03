@@ -1,0 +1,48 @@
+---
+title: "Argus: Error Tracking for Browser, Node.js & React"
+sidebarTitle: "Introduction"
+description: "Argus automatically captures errors and groups them into issues across your browser, Node.js, and React apps, alerting you before your users notice."
+---
+
+Argus watches your applications around the clock — catching uncaught exceptions and unhandled promise rejections the moment they occur, grouping duplicate crashes into a single issue so you can fix bugs without wading through noise, and alerting you before your users ever file a support ticket.
+
+## What You Can Do with Argus
+
+<CardGroup cols={2}>
+  <Card title="Error Tracking" icon="triangle-exclamation" href="/platform/issues">
+    Capture every uncaught exception and unhandled rejection across your apps. Argus groups duplicates into issues using SHA-256 stack fingerprinting so the same bug never floods your inbox.
+  </Card>
+  <Card title="SDK Support" icon="code" href="/sdks/browser">
+    Install a lightweight, zero-dependency SDK for the browser, Node.js, or React in seconds. Every SDK follows the same `init()` API and delegates to the shared ingest pipeline.
+  </Card>
+  <Card title="Alerts" icon="bell" href="/platform/alerts">
+    Create alert rules that fire the instant a new issue is detected, delivering a notification to your email or a webhook endpoint of your choice.
+  </Card>
+  <Card title="Performance Monitoring" icon="gauge-high" href="/platform/performance">
+    Track transaction durations and web vitals — LCP, CLS, TTFB, and FCP — so you can catch slowdowns before they become user complaints.
+  </Card>
+</CardGroup>
+
+## Plans and Pricing
+
+Choose the plan that fits your volume. You can start for free and upgrade any time from your billing page.
+
+| Plan | Events / month   | Projects  | Price   |
+| ---- | ---------------- | --------- | ------- |
+| Free | 10,000           | 1         | $0      |
+| Pro  | 500,000          | Unlimited | $12/mo  |
+
+<Note>
+  When your organization reaches its monthly event limit, the Argus ingest endpoint returns **HTTP 429**. The SDK detects this response and drops the event silently — your application keeps running without any errors or retries. Upgrade to Pro from your billing page to restore ingest immediately.
+</Note>
+
+## Start Here
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the SDK, paste your DSN, and see your first error in the dashboard in under 5 minutes.
+  </Card>
+  <Card title="Core Concepts" icon="book-open" href="/core-concepts">
+    Learn how DSNs, envelopes, issues, fingerprints, and alert rules fit together in Argus.
+  </Card>
+</CardGroup>

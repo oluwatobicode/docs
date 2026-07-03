@@ -1,0 +1,157 @@
+---
+title: "Frequently Asked Questions about Argus"
+sidebarTitle: "FAQ"
+description: "Answers to common questions about Argus plans, SDK behavior, data retention, fingerprinting, and alert delivery."
+---
+
+Here are quick, direct answers to the questions developers ask most often about Argus — covering plans and limits, SDK internals, error grouping, and alerting. If your question isn't here, check the [Troubleshooting guide](/troubleshooting) or open a discussion on the Argus repository.
+
+<AccordionGroup>
+
+  <Accordion title="Is the DSN public key sensitive?">
+    No. The DSN public key is safe to include in client-side JavaScript bundles, environment variables checked into version control, or any other place your application config lives.
+
+    The key is a **write-only ingest credential** — it grants permission to send events to one specific project and nothing else. It cannot be used to read issues, access account data, or make any change to your Argus configuration. Only your session credentials (email/password or OAuth) can do those things.
+
+    If you accidentally rotate a DSN, update the `dsn` option in your `init()` call and redeploy. The old key stops working immediately.
+  </Accordion>
+
+  <Accordion title="What happens when I exceed my monthly event quota?">
+    Once your organization reaches its monthly event limit, the ingest endpoint returns **HTTP 429** for every subsequent event that month.
+
+    The Argus SDK handles 429 responses by **dropping the event silently** — it never throws an error or interrupts your application in any way. Your users won't notice anything, but those events won't appear in your dashboard.
+
+    Your quota resets automatically at the start of each calendar month (tracked as `YYYY-MM`). To avoid gaps in coverage, monitor your usage on the **Usage** page in the dashboard and upgrade to Pro before you hit the limit.
+
+    | Plan | Monthly limit | Price |
+    |---|---|---|
+    | Free | 10,000 events | $0 |
+    | Pro | 500,000 events | $12/mo |
+  </Accordion>
+
+  <Accordion title="How does error deduplication work?">
+    When the Argus worker processes an incoming event, it computes a **SHA-256 fingerprint** from the top 5 stack frames of the exception. Each frame contributes its filename, function name, and line number to the hash.
+
+    If the fingerprint matches an existing Issue, Argus increments that Issue's event count and records the new occurrence — you don't get a new Issue card in the dashboard for every individual error. If the fingerprint is new, Argus creates a new Issue and fires any matching alert rules.
+
+    **Practical implications:**
+
+    - The same bug triggering 10,000 times appears as one Issue with a count of 10,000, not 10,000 separate Issues.
+    - If you fix a bug and deploy a new release, the new stack frames produce a different fingerprint and a new Issue — old and new occurrences are kept separate.
+    - Minified code without source maps can cause unrelated errors to share a fingerprint (minified line numbers collapse multiple call sites onto the same line). Source map resolution, which will restore original filenames and line numbers, is on the roadmap.
+  </Accordion>
+
+  <Accordion title="Can I have multiple projects under one account?">
+    It depends on your plan:
+
+    - **Free plan** — 1 project per organization. Creating a second project is blocked until you upgrade.
+    - **Pro plan** — unlimited projects per organization.
+
+    Each project gets its own unique DSN, its own issue list, and its own alert rules. Use separate projects for logically separate applications (for example, your marketing site and your API backend) so their issues don't mix.
+
+    To upgrade, go to **Settings → Billing** in the dashboard.
+  </Accordion>
+
+  <Accordion title="Which platforms does Argus support?">
+    Argus currently ships SDKs for:
+
+    | Platform | Package | Notes |
+    |---|---|---|
+    | Browser (any JS framework) | `@argus/sdk-browser` | Hooks `window.onerror` and `unhandledrejection`. |
+    | Node.js | `@argus/sdk-node` | Hooks `uncaughtException` and `unhandledRejection`; includes Express middleware. |
+    | React | `@argus/sdk-react` | Adds `<ArgusErrorBoundary>` on top of `@argus/sdk-browser` for render-phase errors. |
+
+    **On the roadmap:** React Native, Vue, Go, and additional platforms. All three current SDKs have zero runtime dependencies.
+  </Accordion>
+
+  <Accordion title="What is the retry behavior when the API is unavailable?">
+    The transport layer retries failed requests up to **2 times** with exponential backoff before giving up:
+
+    | Attempt | Delay before retry |
+    |---|---|
+    | 1st retry | 1 second |
+    | 2nd retry | 2 seconds |
+
+    Retry behavior varies by response type:
+
+    - **5xx or network error** — retries up to 2 times, then logs `[argus] failed to send event after retries` to the console.
+    - **429 (quota / rate limit)** — drops immediately with no retry. Retrying a rate-limited endpoint would only make congestion worse.
+    - **4xx other than 429** — warns once with `[argus] event rejected by server (4xx)` and does not retry. The payload or key is wrong; retrying won't fix it.
+    - **2xx** — returns immediately; no retry needed.
+
+    In all failure cases the SDK logs a `console.warn` and moves on — it never throws an error into your application.
+  </Accordion>
+
+  <Accordion title="Does the SDK affect my app's performance?">
+    Under normal conditions the overhead is negligible:
+
+    - **Zero runtime dependencies** — all three SDKs (`sdk-browser`, `sdk-node`, `sdk-react`) ship with no third-party dependencies, keeping bundle size minimal.
+    - **Global hooks only** — the SDK instruments `window.onerror`, `unhandledrejection`, `uncaughtException`, and `unhandledRejection`. It doesn't patch any standard library methods or intercept normal function calls.
+    - **Fire-and-forget transport** — `captureException()` is async. The ingest POST runs in the background and does not block your request/response cycle.
+
+    Error events are rare by definition, so even the cost of the network POST has no impact on your application's steady-state performance.
+  </Accordion>
+
+  <Accordion title="Can I send alerts to Slack or PagerDuty?">
+    Yes — use a **webhook alert rule**. When a new issue matches the rule's conditions, Argus sends an HTTP POST with the issue payload to any URL you specify.
+
+    To set one up:
+
+    1. Open **Alerts** in the dashboard for your project.
+    2. Click **New Alert Rule** and select **Webhook** as the delivery channel.
+    3. Paste your destination URL:
+       - **Slack:** use a [Slack Incoming Webhook URL](https://api.slack.com/messaging/webhooks).
+       - **PagerDuty:** use your [PagerDuty Events API v2](https://developer.pagerduty.com/docs/events-api-v2/overview/) integration URL.
+       - **Any HTTP endpoint:** any URL that accepts a POST request with a JSON body works.
+    4. Save the rule — Argus fires it the next time a matching new issue is created.
+
+    More native integrations (dedicated Slack and PagerDuty apps with richer formatting) are planned for a future release.
+  </Accordion>
+
+  <Accordion title="How do I resolve an issue that has been fixed?">
+    You have two options:
+
+    **From the dashboard**
+
+    Open the issue and click **Resolve**. The status changes to `RESOLVED` immediately.
+
+    **Via the API**
+
+    Send a `PATCH` request to the issue endpoint:
+
+    ```http
+    PATCH /api/v1/projects/:projectId/issues/:issueId
+    Content-Type: application/json
+
+    { "status": "RESOLVED" }
+    ```
+
+    **Automatic re-opening**
+
+    If the same error fires again after you resolve it — for example, the fix introduced a regression — Argus automatically sets the status back to `UNRESOLVED` and re-triggers any alert rules. You don't need to manually re-open it.
+  </Accordion>
+
+  <Accordion title="What data is captured with each event?">
+    Each event envelope contains:
+
+    | Field | Description |
+    |---|---|
+    | `exception.type` | The error class name (e.g. `TypeError`). |
+    | `exception.value` | The error message string. |
+    | `exception.stacktrace.frames` | Full stack trace — filename, function name, line number, and column number per frame. |
+    | `timestamp` | Milliseconds since epoch (`Date.now()`). |
+    | `environment` | The value you pass to `init()` (e.g. `"production"`). |
+    | `release` | The value you pass to `init()` (e.g. a git SHA or version string). |
+    | `request.url` | The current page URL (browser) or left empty for Node.js unless you set it explicitly. |
+    | `request.method` | HTTP method, if provided. |
+    | `user` | Optional `id` and `email` if you pass user context to `captureException()`. |
+    | `tags` | Optional key/value string pairs for custom categorization. |
+    | `contexts.browser` | Browser name and version (browser SDK only). |
+    | `contexts.os` | OS name and version (browser SDK only). |
+    | `breadcrumbs` | Optional ordered list of events leading up to the error (up to 100). |
+    | `level` | Severity level: `fatal`, `error`, `warning`, `info`, or `debug` (defaults to `error`). |
+
+    Argus does **not** capture request headers, cookies, or body content unless you explicitly include them in the `request` field when calling `captureException()`.
+  </Accordion>
+
+</AccordionGroup>

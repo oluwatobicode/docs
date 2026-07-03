@@ -1,0 +1,137 @@
+---
+title: "Argus Browser SDK: Capture JavaScript Errors"
+sidebarTitle: "Browser SDK"
+description: "Install @argus/sdk-browser to automatically capture uncaught exceptions and unhandled promise rejections from any web application."
+---
+
+The Argus Browser SDK hooks into two global browser APIs — `window.onerror` and the `unhandledrejection` event — to automatically capture every uncaught exception and unhandled promise rejection in your web application and send it to your Argus project. The SDK has zero runtime dependencies and attaches the current page URL to every event automatically.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install @argus/sdk-browser
+```
+
+```bash yarn
+yarn add @argus/sdk-browser
+```
+
+```bash pnpm
+pnpm add @argus/sdk-browser
+```
+
+</CodeGroup>
+
+## Initialization
+
+<Steps>
+
+### Import and call `init()`
+
+Call `init()` as early as possible in your application's entry file — before any other logic — so the global error handlers are registered before anything can throw.
+
+```typescript
+import { init } from '@argus/sdk-browser';
+
+init({
+  dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID',
+  environment: 'production',
+  release: '1.0.0',
+});
+```
+
+### Configure `InitOptions`
+
+`init()` accepts a single `InitOptions` object:
+
+```typescript
+export interface InitOptions {
+  /** Your project DSN (required). Format: https://PUBLIC_KEY@host/PROJECT_ID */
+  dsn: string;
+
+  /** The environment name shown in Argus (e.g. 'production', 'staging'). */
+  environment?: string;
+
+  /** Your application's release version (e.g. '1.4.2' or a git SHA). */
+  release?: string;
+}
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `dsn` | `string` | ✅ | Your Argus project DSN. A malformed DSN throws loudly at startup — fix it before deploying. |
+| `environment` | `string` | — | The deployment environment (e.g. `'production'`, `'staging'`). Shown as a filter in Argus. |
+| `release` | `string` | — | Your application version or release identifier. Use it to correlate errors with deploys. |
+
+</Steps>
+
+## Manual Capture
+
+Automatic capture handles all uncaught errors, but you can also capture exceptions from inside `try/catch` blocks where you want to handle the error locally and still report it to Argus.
+
+```typescript
+import { captureException } from '@argus/sdk-browser';
+
+async function loadUserProfile(userId: string) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    return await response.json();
+  } catch (err) {
+    captureException(err);
+    // Handle the error gracefully in the UI — Argus has the full report.
+    return null;
+  }
+}
+```
+
+`captureException` normalizes non-`Error` values automatically. If you pass a plain string or object, the SDK wraps it in an `Error` before sending.
+
+## How It Works
+
+When you call `init()`, the SDK saves a reference to any `window.onerror` handler your application already registered, then installs its own. It **chains** rather than replaces — after Argus captures the error, it calls your previous handler and returns its return value. Your existing error reporting is never disrupted.
+
+```typescript
+// Simplified from init.ts
+const previousOnError = window.onerror;
+window.onerror = (message, source, lineno, colno, error) => {
+  if (error) {
+    void captureException(error);
+  }
+  if (previousOnError) {
+    return previousOnError.call(window, message, source, lineno, colno, error);
+  }
+  return false; // Don't suppress the console error
+};
+```
+
+Every event sent to Argus automatically includes `request.url` set to `window.location.href` at the moment of the crash — so you always know which page the user was on.
+
+<Note>
+The SDK returns `false` from `window.onerror` intentionally. This preserves the browser's default behavior of logging the error to the DevTools console, so your developers still see uncaught errors during local development.
+</Note>
+
+## Cross-Origin Scripts
+
+If your page loads scripts from a different origin (a CDN, a third-party widget, etc.) and those scripts throw, the browser enforces the same-origin policy on error details. Argus captures whatever the browser makes available — typically only the message `"Script error."` with no stack trace and no line number.
+
+To get full stack traces from your own cross-origin scripts, add the `crossorigin="anonymous"` attribute to the `<script>` tag and serve the script with a `Access-Control-Allow-Origin: *` response header. Argus then receives the complete error.
+
+```html
+<!-- Full stack traces from your own CDN-hosted scripts -->
+<script src="https://cdn.example.com/app.js" crossorigin="anonymous"></script>
+```
+
+## Exported API
+
+| Symbol | Kind | Description |
+|---|---|---|
+| `init` | `function` | Initializes the SDK and registers global handlers. |
+| `captureException` | `function` | Manually captures and sends an exception to Argus. |
+| `InitOptions` | `interface` | TypeScript type for the `init()` options object. |
+
+```typescript
+import { init, captureException } from '@argus/sdk-browser';
+import type { InitOptions } from '@argus/sdk-browser';
+```

@@ -1,0 +1,156 @@
+---
+title: "Authenticating with the Argus API"
+sidebarTitle: "Authentication"
+description: "Argus uses session cookies for dashboard API calls and DSN public keys for SDK event ingest. Learn how each method works."
+---
+
+Argus uses two different authentication mechanisms depending on what you are doing. Dashboard operations — querying projects, issues, alerts, and usage — use session-cookie authentication established via a login request. SDK event ingest uses a DSN public key passed in a request header. Choose the right mechanism for your use case before making your first request.
+
+## Session Authentication
+
+Most API endpoints require an active session. Establish a session by sending your credentials to the login endpoint — Argus sets a session cookie in the response. Include that cookie in every subsequent request.
+
+**Log in and save the session cookie:**
+
+```bash
+curl -c cookies.txt -X POST https://your-domain.com/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "you@example.com", "password": "your-password"}'
+```
+
+**Use the saved cookie in subsequent calls:**
+
+```bash
+curl -b cookies.txt https://your-domain.com/api/v1/projects
+```
+
+- **Browsers** handle cookies automatically — no extra configuration needed.
+- **Programmatic clients** (scripts, server-side code) must use a cookie jar (e.g. `-c`/`-b` flags in curl, a `requests.Session()` in Python, or equivalent) or manually copy the `Set-Cookie` value into a `Cookie` header.
+- Any session-protected endpoint returns `401` with the message `"You need to be logged in!"` if the cookie is missing or expired.
+
+<Note>
+  Argus runs behind a reverse proxy in production. Cookies are marked `Secure` and `SameSite=Lax` in that environment, so make sure your client sends requests over HTTPS.
+</Note>
+
+## Registration and Email Verification
+
+New accounts require email verification via a one-time passcode (OTP) before you can log in.
+
+**Step 1 — Create the account:**
+
+```bash
+curl -X POST https://your-domain.com/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "Ada Lovelace", "email": "ada@example.com", "password": "your-password"}'
+```
+
+A 6-character alphanumeric OTP is sent to the email address you provided. The OTP expires after **10 minutes**.
+
+**Step 2 — Verify your email:**
+
+```bash
+curl -X POST https://your-domain.com/api/v1/auth/verify-otp \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "ada@example.com", "otp": "A3B7CX"}'
+```
+
+**Step 3 — Log in:**
+
+Once your email is verified, log in with `POST /api/v1/auth/login` as shown in [Session Authentication](#session-authentication) above.
+
+**Resend an expired OTP:**
+
+```bash
+curl -X POST https://your-domain.com/api/v1/auth/send-otp \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "ada@example.com"}'
+```
+
+<Warning>
+  `POST /api/v1/auth/send-otp` returns `400` if the email address has already been verified. Use it only to request a fresh OTP for an unverified account.
+</Warning>
+
+## OAuth Login
+
+Argus supports signing in with **Google** and **GitHub**. OAuth flows are browser-based — initiate them from the dashboard login page by clicking **Sign in with Google** or **Sign in with GitHub**. After a successful OAuth callback, Argus sets the same session cookie used by password-based login, so all subsequent API calls work identically.
+
+<Note>
+  OAuth accounts are linked by email address. If you registered with a password and later sign in with Google using the same email, Argus creates a separate OAuth-linked account record. Use the same sign-in method consistently.
+</Note>
+
+## DSN Authentication
+
+The event ingest endpoint does **not** use session cookies. Instead, it authenticates requests using your project's DSN public key.
+
+**Ingest endpoint:**
+
+```
+POST /api/v1/ingest/:projectId/envelope
+```
+
+**Pass the public key in the `X-Sentry-Auth` request header:**
+
+```
+X-Sentry-Auth: sentry_key=YOUR_PUBLIC_KEY
+```
+
+Alternatively, you can pass it as a query parameter:
+
+```
+POST /api/v1/ingest/proj_abc123/envelope?sentry_key=YOUR_PUBLIC_KEY
+```
+
+**Find your public key in the DSN string.** Your DSN looks like this:
+
+```
+https://PUBLIC_KEY@your-domain.com/PROJECT_ID
+```
+
+Extract the segment between `https://` and `@` — that is your public key.
+
+```bash
+# Example ingest request (the SDK constructs this automatically)
+curl -X POST https://your-domain.com/api/v1/ingest/proj_abc123/envelope \
+  -H 'Content-Type: application/json' \
+  -H 'X-Sentry-Auth: sentry_key=a1b2c3d4e5f6' \
+  -d '{ ... envelope payload ... }'
+```
+
+<Warning>
+  The DSN public key only grants permission to **send** events to a specific project. It cannot read issues, access project settings, or perform any other API operation. Do not confuse it with session credentials.
+</Warning>
+
+<Tip>
+  If you are using an Argus SDK, the SDK reads your DSN and attaches the `X-Sentry-Auth` header to every ingest request automatically. You only need to handle this manually when building a custom integration.
+</Tip>
+
+## Getting the Current User
+
+Retrieve your authenticated user profile and organization details with:
+
+```bash
+curl -b cookies.txt https://your-domain.com/api/v1/auth/me
+```
+
+The response `data` object includes your user fields plus an `organization` object containing your org's `id`, `name`, `slug`, and `plan`.
+
+## Logging Out
+
+Clear your session by calling the logout endpoint:
+
+```bash
+curl -b cookies.txt -X POST https://your-domain.com/api/v1/auth/logout
+```
+
+Argus invalidates the server-side session. Discard the cookie file on your client after logging out.
+
+## Auth Endpoints Summary
+
+| Method | Path | Auth Required | Description |
+|--------|------|---------------|-------------|
+| `POST` | `/api/v1/auth/register` | No | Create a new account |
+| `POST` | `/api/v1/auth/verify-otp` | No | Verify email with OTP |
+| `POST` | `/api/v1/auth/send-otp` | No | Resend a new OTP |
+| `POST` | `/api/v1/auth/login` | No | Log in and receive a session cookie |
+| `POST` | `/api/v1/auth/logout` | Session | Log out and clear the session |
+| `GET` | `/api/v1/auth/me` | Session | Get current user and organization |
