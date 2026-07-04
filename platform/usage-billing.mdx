@@ -4,14 +4,14 @@ sidebarTitle: "Usage & Billing"
 description: "Understand your monthly event quota, track usage in the dashboard, and upgrade to the Pro plan when your app needs more capacity."
 ---
 
-Argus enforces a monthly event quota per organization. Every error event, transaction, and performance entry your SDK sends counts toward that quota. Understanding your usage — and knowing what happens when you approach the limit — helps you plan ahead and choose the right plan before you hit a wall in production.
+Argus enforces a monthly event quota per organization. Every error event your SDK sends counts toward that quota. Understanding your usage — and knowing what happens when you approach the limit — helps you plan ahead and choose the right plan before you hit a wall in production.
 
 ## Plans
 
 | Plan | Events / month | Projects | Price |
 |---|---|---|---|
 | Free | 10,000 | 1 | $0 |
-| Pro | 500,000 | Unlimited | $12/mo |
+| Pro | 500,000 | Unlimited | $10/mo |
 
 <Warning>
   The Free tier is limited to **1 project**. If you need to monitor multiple applications or environments, upgrade to Pro for unlimited projects.
@@ -40,7 +40,7 @@ Fetch your current usage programmatically with a single endpoint:
 
 ```http
 GET /api/v1/usage
-Authorization: <session cookie or bearer token>
+Cookie: session=YOUR_SESSION_COOKIE
 ```
 
 **Example response:**
@@ -83,14 +83,16 @@ When you are ready to raise your limit or add more projects, upgrade directly fr
     Click **Usage** or **Billing** in the dashboard sidebar. Your current plan and usage meter are displayed at the top of the page.
   </Step>
   <Step title="Click Upgrade">
-    Click the **Upgrade** button. Argus redirects you to a secure checkout session with our payment provider.
+    Click the **Upgrade** button. Argus redirects you to a secure, hosted checkout with **Polar**, our payment provider.
   </Step>
   <Step title="Complete checkout">
-    Enter your payment details in the checkout flow. Your plan upgrades immediately upon successful payment — no restart required.
+    Enter your payment details in Polar's checkout. On successful payment, a webhook flips your organization to **Pro** within seconds — no restart required.
   </Step>
   <Step title="Confirm your new limits">
     Return to the Usage page. Your plan now shows **PRO**, your limit is 500,000 events/month, and the 1-project restriction is removed.
   </Step>
 </Steps>
+
+To change your payment method or cancel, open **Billing** in the dashboard and click **Manage subscription** — this opens the Polar customer portal.
 
 For the full usage endpoint reference, see the [Usage API reference](/api/usage).

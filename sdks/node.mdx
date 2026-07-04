@@ -1,7 +1,7 @@
 ---
 title: "Argus Node.js SDK: Express and Process Error Capture"
 sidebarTitle: "Node.js SDK"
-description: "Install @argus/sdk-node to capture uncaughtException and unhandledRejection events in Node.js apps, with optional Express middleware."
+description: "Install @argusdev/sdk-node to capture uncaughtException and unhandledRejection events in Node.js apps, with optional Express middleware."
 ---
 
 The Argus Node.js SDK integrates with Node's process-level event system, hooking into `process.on('uncaughtException')` and `process.on('unhandledRejection')` to automatically capture every unhandled error in your server application. For Express users, an optional error-handling middleware attaches request context (HTTP method and URL) to every captured error. The SDK has zero runtime dependencies.
@@ -11,15 +11,15 @@ The Argus Node.js SDK integrates with Node's process-level event system, hooking
 <CodeGroup>
 
 ```bash npm
-npm install @argus/sdk-node
+npm install @argusdev/sdk-node
 ```
 
 ```bash yarn
-yarn add @argus/sdk-node
+yarn add @argusdev/sdk-node
 ```
 
 ```bash pnpm
-pnpm add @argus/sdk-node
+pnpm add @argusdev/sdk-node
 ```
 
 </CodeGroup>
@@ -33,7 +33,7 @@ pnpm add @argus/sdk-node
 Place `init()` before any routes, middleware, or application logic. This guarantees that the process-level event listeners are registered before anything can throw.
 
 ```typescript
-import { init } from '@argus/sdk-node';
+import { init } from '@argusdev/sdk-node';
 
 init({
   dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID',
@@ -75,7 +75,7 @@ Add `argusErrorHandler()` as the **last middleware** in your Express application
 
 ```typescript
 import express from 'express';
-import { init, argusErrorHandler } from '@argus/sdk-node';
+import { init, argusErrorHandler } from '@argusdev/sdk-node';
 
 init({ dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID' });
 
@@ -113,7 +113,7 @@ Each error captured through the middleware includes the HTTP `method` (e.g. `GET
 Use `captureException()` inside `try/catch` blocks when you want to handle an error gracefully and still report it to Argus.
 
 ```typescript
-import { captureException } from '@argus/sdk-node';
+import { captureException } from '@argusdev/sdk-node';
 
 async function processJob(jobId: string) {
   try {
@@ -168,6 +168,6 @@ Promise.reject({ code: 'TIMEOUT', service: 'payments' });
 | `InitOptions` | `interface` | TypeScript type for the `init()` options object. |
 
 ```typescript
-import { init, captureException, argusErrorHandler } from '@argus/sdk-node';
-import type { InitOptions } from '@argus/sdk-node';
+import { init, captureException, argusErrorHandler } from '@argusdev/sdk-node';
+import type { InitOptions } from '@argusdev/sdk-node';
 ```

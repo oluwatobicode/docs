@@ -30,39 +30,39 @@ By the end of this guide you'll have Argus installed in your application, connec
     **Browser**
     <CodeGroup>
       ```bash npm
-      npm install @argus/sdk-browser
+      npm install @argusdev/sdk-browser
       ```
       ```bash yarn
-      yarn add @argus/sdk-browser
+      yarn add @argusdev/sdk-browser
       ```
       ```bash pnpm
-      pnpm add @argus/sdk-browser
+      pnpm add @argusdev/sdk-browser
       ```
     </CodeGroup>
 
     **Node.js**
     <CodeGroup>
       ```bash npm
-      npm install @argus/sdk-node
+      npm install @argusdev/sdk-node
       ```
       ```bash yarn
-      yarn add @argus/sdk-node
+      yarn add @argusdev/sdk-node
       ```
       ```bash pnpm
-      pnpm add @argus/sdk-node
+      pnpm add @argusdev/sdk-node
       ```
     </CodeGroup>
 
     **React**
     <CodeGroup>
       ```bash npm
-      npm install @argus/sdk-react
+      npm install @argusdev/sdk-react
       ```
       ```bash yarn
-      yarn add @argus/sdk-react
+      yarn add @argusdev/sdk-react
       ```
       ```bash pnpm
-      pnpm add @argus/sdk-react
+      pnpm add @argusdev/sdk-react
       ```
     </CodeGroup>
   </Step>
@@ -73,7 +73,7 @@ By the end of this guide you'll have Argus installed in your application, connec
     **Browser** — add this before any other application code in your entry file:
 
     ```ts
-    import { init } from '@argus/sdk-browser';
+    import { init } from '@argusdev/sdk-browser';
 
     init({
       dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
@@ -89,7 +89,7 @@ By the end of this guide you'll have Argus installed in your application, connec
     **Node.js** — initialize at the very top of your server entry file:
 
     ```ts
-    import { init, captureException, argusErrorHandler } from '@argus/sdk-node';
+    import { init, captureException, argusErrorHandler } from '@argusdev/sdk-node';
 
     init({
       dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
@@ -108,7 +108,7 @@ By the end of this guide you'll have Argus installed in your application, connec
     **React** — initialize once and wrap your component tree with `<ArgusErrorBoundary>`:
 
     ```tsx
-    import { init, ArgusErrorBoundary } from '@argus/sdk-react';
+    import { init, ArgusErrorBoundary } from '@argusdev/sdk-react';
 
     init({
       dsn: 'https://PUBLIC_KEY@your-domain.com/PROJECT_ID',
@@ -132,7 +132,7 @@ By the end of this guide you'll have Argus installed in your application, connec
     You can also capture errors manually anywhere in your code:
 
     ```ts
-    import { captureException } from '@argus/sdk-react'; // or sdk-browser / sdk-node
+    import { captureException } from '@argusdev/sdk-react'; // or sdk-browser / sdk-node
 
     try {
       riskyOperation();

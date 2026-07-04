@@ -17,7 +17,7 @@ This guide walks you through the most common problems you'll encounter when inte
 
     ```ts
     // ✅ Correct — init() is first
-    import { init } from "@argus/sdk-node";
+    import { init } from "@argusdev/sdk-node";
     init({ dsn: "https://PUBLIC_KEY@your-domain.com/PROJECT_ID" });
 
     // the rest of your app starts here
@@ -154,10 +154,10 @@ This guide walks you through the most common problems you'll encounter when inte
 
     **React render errors**
 
-    React swallows errors that occur during the render phase — they don't reach `window.onerror`. Use `<ArgusErrorBoundary>` from `@argus/sdk-react` to capture them:
+    React swallows errors that occur during the render phase — they don't reach `window.onerror`. Use `<ArgusErrorBoundary>` from `@argusdev/sdk-react` to capture them:
 
     ```tsx
-    import { ArgusErrorBoundary } from "@argus/sdk-react";
+    import { ArgusErrorBoundary } from "@argusdev/sdk-react";
 
     function App() {
       return (
@@ -184,7 +184,7 @@ This guide walks you through the most common problems you'll encounter when inte
 
     ```ts
     import express from "express";
-    import { init, argusErrorHandler } from "@argus/sdk-node";
+    import { init, argusErrorHandler } from "@argusdev/sdk-node";
 
     init({ dsn: "https://PUBLIC_KEY@your-domain.com/PROJECT_ID" });
 

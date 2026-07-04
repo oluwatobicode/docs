@@ -4,11 +4,11 @@ sidebarTitle: "Performance"
 description: "Argus tracks transaction durations, span timing, and web vitals like LCP, CLS, TTFB, and FCP to surface performance regressions."
 ---
 
-Performance monitoring in Argus gives you visibility into how fast — or slow — your application really is. Argus captures transactions (individual units of work like an HTTP request or a page load), breaks them down into child spans, and aggregates web vitals so you can see exactly where time is being spent and catch regressions before your users do. Performance monitoring is available on all plans.
+Performance monitoring will give you visibility into how fast — or slow — your application really is: transactions (individual units of work like an HTTP request or a page load), broken down into child spans, plus aggregated web vitals, so you can see exactly where time is being spent and catch regressions before your users do.
 
-<Note>
-  Performance monitoring is in active development. Transaction ingestion is available now. Web vitals aggregation and time-series analytics (p50/p75/p95 latency, historical trending) are coming in a future release.
-</Note>
+<Warning>
+  Performance monitoring is **not yet available** — it's the next feature on the Argus roadmap. This page documents the **planned** data model and API so you know what's coming; the endpoints below are not live yet, and the **Performance** tab in the dashboard shows a "coming soon" state. Error tracking, alerts, and billing are fully available today.
+</Warning>
 
 ## Transactions
 
@@ -60,7 +60,7 @@ GET /api/v1/projects/:projectId/performance/vitals
 
 ## Viewing performance data
 
-To explore performance data in the dashboard:
+Once performance monitoring ships, you'll explore it in the dashboard:
 
 1. Open your project from the **Projects** console.
 2. Navigate to the **Performance** tab in the project sidebar.

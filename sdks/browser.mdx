@@ -1,7 +1,7 @@
 ---
 title: "Argus Browser SDK: Automatic JavaScript Error Capture"
 sidebarTitle: "Browser SDK"
-description: "Install @argus/sdk-browser to automatically capture uncaught exceptions and unhandled promise rejections from any web application."
+description: "Install @argusdev/sdk-browser to automatically capture uncaught exceptions and unhandled promise rejections from any web application."
 ---
 
 The Argus Browser SDK hooks into two global browser APIs — `window.onerror` and the `unhandledrejection` event — to automatically capture every uncaught exception and unhandled promise rejection in your web application and send it to your Argus project. The SDK has zero runtime dependencies and attaches the current page URL to every event automatically.
@@ -11,15 +11,15 @@ The Argus Browser SDK hooks into two global browser APIs — `window.onerror` an
 <CodeGroup>
 
 ```bash npm
-npm install @argus/sdk-browser
+npm install @argusdev/sdk-browser
 ```
 
 ```bash yarn
-yarn add @argus/sdk-browser
+yarn add @argusdev/sdk-browser
 ```
 
 ```bash pnpm
-pnpm add @argus/sdk-browser
+pnpm add @argusdev/sdk-browser
 ```
 
 </CodeGroup>
@@ -33,7 +33,7 @@ pnpm add @argus/sdk-browser
 Call `init()` as early as possible in your application's entry file — before any other logic — so the global error handlers are registered before anything can throw.
 
 ```typescript
-import { init } from '@argus/sdk-browser';
+import { init } from '@argusdev/sdk-browser';
 
 init({
   dsn: 'https://YOUR_PUBLIC_KEY@your-domain.com/YOUR_PROJECT_ID',
@@ -72,7 +72,7 @@ export interface InitOptions {
 Automatic capture handles all uncaught errors, but you can also capture exceptions from inside `try/catch` blocks where you want to handle the error locally and still report it to Argus.
 
 ```typescript
-import { captureException } from '@argus/sdk-browser';
+import { captureException } from '@argusdev/sdk-browser';
 
 async function loadUserProfile(userId: string) {
   try {
@@ -132,6 +132,6 @@ To get full stack traces from your own cross-origin scripts, add the `crossorigi
 | `InitOptions` | `interface` | TypeScript type for the `init()` options object. |
 
 ```typescript
-import { init, captureException } from '@argus/sdk-browser';
-import type { InitOptions } from '@argus/sdk-browser';
+import { init, captureException } from '@argusdev/sdk-browser';
+import type { InitOptions } from '@argusdev/sdk-browser';
 ```

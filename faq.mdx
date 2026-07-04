@@ -26,7 +26,7 @@ Here are quick, direct answers to the questions developers ask most often about 
     | Plan | Monthly limit | Price |
     |---|---|---|
     | Free | 10,000 events | $0 |
-    | Pro | 500,000 events | $12/mo |
+    | Pro | 500,000 events | $10/mo |
   </Accordion>
 
   <Accordion title="How does error deduplication work?">
@@ -59,9 +59,9 @@ Here are quick, direct answers to the questions developers ask most often about 
 
     | Platform | Package | Notes |
     |---|---|---|
-    | Browser (any JS framework) | `@argus/sdk-browser` | Hooks `window.onerror` and `unhandledrejection`. |
-    | Node.js | `@argus/sdk-node` | Hooks `uncaughtException` and `unhandledRejection`; includes Express middleware. |
-    | React | `@argus/sdk-react` | Adds `<ArgusErrorBoundary>` on top of `@argus/sdk-browser` for render-phase errors. |
+    | Browser (any JS framework) | `@argusdev/sdk-browser` | Hooks `window.onerror` and `unhandledrejection`. |
+    | Node.js | `@argusdev/sdk-node` | Hooks `uncaughtException` and `unhandledRejection`; includes Express middleware. |
+    | React | `@argusdev/sdk-react` | Adds `<ArgusErrorBoundary>` on top of `@argusdev/sdk-browser` for render-phase errors. |
 
     **On the roadmap:** React Native, Vue, Go, and additional platforms. All three current SDKs have zero runtime dependencies.
   </Accordion>

@@ -4,7 +4,7 @@ sidebarTitle: "Alerts"
 description: "Create alert rules to receive email or webhook notifications the moment Argus detects a new issue in your project."
 ---
 
-Alert rules let you get notified immediately when something goes wrong in your application — without having to check the dashboard manually. When Argus captures an event that creates a brand new issue, it evaluates all active rules for your project and fires every matching notification channel within seconds. Configure an email address, a webhook endpoint, or both, and Argus handles the delivery.
+Alert rules let you get notified immediately when something goes wrong in your application — without having to check the dashboard manually. Argus supports two rule types: **new issue** (fires the first time a distinct error appears) and **error rate** (fires when events cross a threshold within a time window). When a rule matches, Argus fires every configured notification channel within seconds. Configure an email address, a webhook endpoint, or both, and Argus handles the delivery.
 
 ## Alert rule fields
 
@@ -13,9 +13,9 @@ When you create an alert rule, you configure the following fields:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | ✅ | A human-readable label for this rule, e.g. `"Production errors"` |
-| `type` | enum | — | `NEW_ISSUE` fires when a new distinct issue is created (default). `ERROR_RATE` is reserved for a future release. |
-| `threshold` | number | — | Numeric threshold used by rate-based alert types (reserved for future use). |
-| `windowMinutes` | number | — | Time window in minutes for rate-based alert types (reserved for future use). |
+| `type` | enum | — | `NEW_ISSUE` (default) fires when a new distinct issue is created. `ERROR_RATE` fires when event volume crosses a threshold in a time window. |
+| `threshold` | number | `ERROR_RATE` | Event count that triggers an error-rate rule within its window. |
+| `windowMinutes` | number | `ERROR_RATE` | Rolling time window (minutes) an error-rate rule counts events over. |
 | `notifyEmail` | string | ✅ (or `webhookUrl`) | Email address to send a notification to when the rule fires |
 | `webhookUrl` | string | ✅ (or `notifyEmail`) | URL that receives a `POST` request when the rule fires |
 | `enabled` | boolean | — | Defaults to `true`. Set to `false` to pause the rule without deleting it. |
@@ -24,6 +24,12 @@ When you create an alert rule, you configure the following fields:
 <Note>
   You must supply at least one of `notifyEmail` or `webhookUrl` — a rule with neither delivery channel is rejected with a validation error. You can supply both to notify via two channels simultaneously.
 </Note>
+
+## Alert types
+
+**New issue (`NEW_ISSUE`)** — fires the first time Argus sees a given error fingerprint in your project (when a brand-new issue is created). Naturally deduplicated: each distinct issue alerts once.
+
+**Error rate (`ERROR_RATE`)** — fires when the number of events in your project crosses `threshold` within the last `windowMinutes`. To avoid noise, a rule that has fired won't fire again until one full window has elapsed (a cooldown), so a sustained spike alerts **once** rather than on every event.
 
 ## Creating an alert
 
@@ -35,7 +41,10 @@ When you create an alert rule, you configure the following fields:
     Click the **New rule** button in the top-right corner of the Alerts page. The alert rule modal opens.
   </Step>
   <Step title="Name your rule and choose a type">
-    Enter a descriptive name for the rule. Leave **Type** set to `NEW_ISSUE` — this fires whenever Argus creates a brand new, never-before-seen issue fingerprint in your project.
+    Enter a descriptive name, then pick a **type**: **New issue** to fire on every brand-new issue, or **Error rate** to fire on a spike.
+  </Step>
+  <Step title="Set a threshold (error-rate rules only)">
+    If you chose **Error rate**, set the **threshold** (event count) and **window** (minutes) — for example, 100 events in 5 minutes.
   </Step>
   <Step title="Add a delivery channel">
     Enter an **email address**, a **webhook URL**, or both. Argus requires at least one.
@@ -47,22 +56,38 @@ When you create an alert rule, you configure the following fields:
 
 ## Webhook payload
 
-When a `NEW_ISSUE` alert fires, Argus sends an HTTP `POST` request to your `webhookUrl` with a JSON body. Use this to integrate with Slack (via incoming webhooks), PagerDuty, or any custom pipeline you operate.
+When a rule fires, Argus sends an HTTP `POST` with a JSON body to your `webhookUrl`. The `type` field tells you which kind of alert fired. Use this to integrate with Slack (via incoming webhooks), PagerDuty, or any custom pipeline you operate.
+
+**New issue:**
 
 ```json
 {
-  "event": "NEW_ISSUE",
+  "type": "new_issue",
+  "projectName": "my-shop",
   "issue": {
     "id": "clx1234abcd",
     "title": "TypeError: Cannot read properties of undefined",
-    "culprit": "src/api/users.ts",
+    "culprit": "src/api/users.ts:42",
     "level": "ERROR",
     "status": "UNRESOLVED",
     "eventCount": 1,
-    "firstSeen": "2025-07-03T09:14:55.000Z",
-    "lastSeen": "2025-07-03T09:14:55.000Z",
+    "firstSeen": "2026-07-03T09:14:55.000Z",
     "projectId": "clx0000proj"
-  }
+  },
+  "issueUrl": "https://app.argus.dev/projects/clx0000proj/issues/clx1234abcd"
+}
+```
+
+**Error rate:**
+
+```json
+{
+  "type": "error_rate",
+  "projectName": "my-shop",
+  "count": 128,
+  "threshold": 100,
+  "windowMinutes": 5,
+  "issuesUrl": "https://app.argus.dev/projects/clx0000proj/issues"
 }
 ```
 
@@ -70,7 +95,7 @@ Your endpoint should respond with a `2xx` status code to acknowledge receipt. Ar
 
 ## Email notifications
 
-When a new issue triggers an email rule, Argus delivers an email notification to the configured address containing the issue title, level, culprit, and a direct link to the issue detail view in your dashboard.
+When a rule fires an email, Argus delivers a notification to the configured address. New-issue emails include the issue title, level, culprit, and a direct link to the issue; error-rate emails include the event count, threshold, and window, with a link to the project's issues.
 
 Make sure the email address you configure is deliverable — Argus does not verify addresses at rule creation time.
 
