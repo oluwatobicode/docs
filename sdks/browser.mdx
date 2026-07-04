@@ -1,5 +1,5 @@
 ---
-title: "Argus Browser SDK: Capture JavaScript Errors"
+title: "Argus Browser SDK: Automatic JavaScript Error Capture"
 sidebarTitle: "Browser SDK"
 description: "Install @argus/sdk-browser to automatically capture uncaught exceptions and unhandled promise rejections from any web application."
 ---
@@ -79,7 +79,7 @@ async function loadUserProfile(userId: string) {
     const response = await fetch(`/api/users/${userId}`);
     return await response.json();
   } catch (err) {
-    captureException(err);
+    await captureException(err);
     // Handle the error gracefully in the UI — Argus has the full report.
     return null;
   }
@@ -128,7 +128,7 @@ To get full stack traces from your own cross-origin scripts, add the `crossorigi
 | Symbol | Kind | Description |
 |---|---|---|
 | `init` | `function` | Initializes the SDK and registers global handlers. |
-| `captureException` | `function` | Manually captures and sends an exception to Argus. |
+| `captureException` | `function` | Manually captures and sends an exception to Argus. Signature: `captureException(err: unknown, extra?: EnvelopeOptions): Promise<void>`. |
 | `InitOptions` | `interface` | TypeScript type for the `init()` options object. |
 
 ```typescript

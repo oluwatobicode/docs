@@ -1,7 +1,7 @@
 ---
-title: "Frequently Asked Questions about Argus"
+title: "Argus FAQ: Plans, SDK Retries, Error Grouping, and Alerting"
 sidebarTitle: "FAQ"
-description: "Answers to common questions about Argus plans, SDK behavior, data retention, fingerprinting, and alert delivery."
+description: "Common Argus questions answered: plans and event limits, SDK retry behavior, error deduplication, supported platforms, and alert webhooks."
 ---
 
 Here are quick, direct answers to the questions developers ask most often about Argus — covering plans and limits, SDK internals, error grouping, and alerting. If your question isn't here, check the [Troubleshooting guide](/troubleshooting) or open a discussion on the Argus repository.
@@ -30,15 +30,17 @@ Here are quick, direct answers to the questions developers ask most often about 
   </Accordion>
 
   <Accordion title="How does error deduplication work?">
-    When the Argus worker processes an incoming event, it computes a **SHA-256 fingerprint** from the top 5 stack frames of the exception. Each frame contributes its filename, function name, and line number to the hash.
-
-    If the fingerprint matches an existing Issue, Argus increments that Issue's event count and records the new occurrence — you don't get a new Issue card in the dashboard for every individual error. If the fingerprint is new, Argus creates a new Issue and fires any matching alert rules.
+    When the same error occurs multiple times, Argus groups those occurrences together into a single Issue rather than creating a new Issue card for every individual event. You see one Issue with a rising event count, not thousands of duplicate cards.
 
     **Practical implications:**
 
     - The same bug triggering 10,000 times appears as one Issue with a count of 10,000, not 10,000 separate Issues.
-    - If you fix a bug and deploy a new release, the new stack frames produce a different fingerprint and a new Issue — old and new occurrences are kept separate.
+    - If you fix a bug and deploy a new release, the updated stack frames produce a different fingerprint and a new Issue — old and new occurrences are kept separate.
     - Minified code without source maps can cause unrelated errors to share a fingerprint (minified line numbers collapse multiple call sites onto the same line). Source map resolution, which will restore original filenames and line numbers, is on the roadmap.
+
+    **How the grouping key is computed**
+
+    Argus generates a SHA-256 fingerprint from the top 5 stack frames of the exception — each frame contributes its filename, function name, and line number. Two events with the same fingerprint are counted as the same Issue; a different fingerprint creates a new one.
   </Accordion>
 
   <Accordion title="Can I have multiple projects under one account?">
@@ -93,7 +95,7 @@ Here are quick, direct answers to the questions developers ask most often about 
   </Accordion>
 
   <Accordion title="Can I send alerts to Slack or PagerDuty?">
-    Yes — use a **webhook alert rule**. When a new issue matches the rule's conditions, Argus sends an HTTP POST with the issue payload to any URL you specify.
+    Yes — use a **webhook alert rule**. When a new issue matches the rule's conditions, Argus sends an HTTP POST with a JSON body to any URL you specify.
 
     To set one up:
 

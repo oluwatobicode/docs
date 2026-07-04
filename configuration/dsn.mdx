@@ -1,7 +1,7 @@
 ---
-title: "Your Argus DSN: Project Connection String"
+title: "Argus DSN: The Project Connection String Explained"
 sidebarTitle: "DSN"
-description: "A DSN (Data Source Name) connects your SDK to a specific Argus project. Learn the format, where to find it, and how to use it."
+description: "A DSN (Data Source Name) connects your SDK to a specific Argus project. Learn the format, where to find your DSN, and how to use it safely."
 ---
 
 A DSN (Data Source Name) is the connection string that tells your Argus SDK where to send events. Every project gets a unique DSN at creation time — paste it into your `init()` call once, and Argus handles the rest. Without a valid DSN, the SDK silently no-ops instead of crashing your app, but you won't receive any error data, so getting this value right from the start matters.
@@ -16,7 +16,7 @@ https://PUBLIC_KEY@your-domain.com/PROJECT_ID
 
 | Component | Description |
 |---|---|
-| `PUBLIC_KEY` | Authenticates your SDK with the ingest endpoint. Argus uses this as the `X-Argus-Key` header on every envelope it sends. It is **not** a secret — it's safe to include in frontend code. |
+| `PUBLIC_KEY` | The URL username — the portion of the DSN before the `@`. It identifies your SDK to the ingest endpoint. It is **not** a secret — safe to include in frontend code, commit to source control, or embed in build pipelines. |
 | `your-domain.com` | The host where your Argus instance is running. |
 | `PROJECT_ID` | The unique identifier for your project. The ingest route is scoped to this ID, so events land in exactly the right project. |
 

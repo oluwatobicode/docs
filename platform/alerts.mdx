@@ -14,9 +14,12 @@ When you create an alert rule, you configure the following fields:
 |---|---|---|---|
 | `name` | string | ✅ | A human-readable label for this rule, e.g. `"Production errors"` |
 | `type` | enum | — | `NEW_ISSUE` fires when a new distinct issue is created (default). `ERROR_RATE` is reserved for a future release. |
+| `threshold` | number | — | Numeric threshold used by rate-based alert types (reserved for future use). |
+| `windowMinutes` | number | — | Time window in minutes for rate-based alert types (reserved for future use). |
 | `notifyEmail` | string | ✅ (or `webhookUrl`) | Email address to send a notification to when the rule fires |
 | `webhookUrl` | string | ✅ (or `notifyEmail`) | URL that receives a `POST` request when the rule fires |
 | `enabled` | boolean | — | Defaults to `true`. Set to `false` to pause the rule without deleting it. |
+| `lastTriggeredAt` | datetime | — | Timestamp of the most recent time this rule fired a notification. Read-only. |
 
 <Note>
   You must supply at least one of `notifyEmail` or `webhookUrl` — a rule with neither delivery channel is rejected with a validation error. You can supply both to notify via two channels simultaneously.
@@ -67,7 +70,7 @@ Your endpoint should respond with a `2xx` status code to acknowledge receipt. Ar
 
 ## Email notifications
 
-Email notifications are sent via **Resend**. When a new issue triggers an email rule, Argus delivers a message to the configured address containing the issue title, level, culprit, and a direct link to the issue detail view in your dashboard.
+When a new issue triggers an email rule, Argus delivers an email notification to the configured address containing the issue title, level, culprit, and a direct link to the issue detail view in your dashboard.
 
 Make sure the email address you configure is deliverable — Argus does not verify addresses at rule creation time.
 

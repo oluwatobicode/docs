@@ -8,7 +8,7 @@ When your application throws an error, Argus captures it as an **event**. Rather
 
 ## What is an issue?
 
-Every event that arrives at Argus is fingerprinted using a **SHA-256 hash of the top 5 stack frames**. Two errors that originate from the same code path — even if triggered by 100 different users — produce the same fingerprint and are grouped into a single issue. This means your dashboard shows one issue with an event count of 100, not 100 separate items.
+Every event that arrives at Argus is automatically grouped with other events that share the same root cause. Two errors that originate from the same code path — even if triggered by 100 different users — are grouped into a single issue. This means your dashboard shows one issue with an event count of 100, not 100 separate items.
 
 Each issue tracks the following fields:
 

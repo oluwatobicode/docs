@@ -31,7 +31,7 @@ Before you dive into the SDK reference or platform guides, it helps to understan
   </Accordion>
 
   <Accordion title="Envelope — the event payload">
-    An envelope is the JSON payload that the SDK builds and sends to the Argus ingest endpoint (`POST /api/v1/ingest/:projectId/envelope`) every time an error is captured.
+    An envelope is the JSON payload that the SDK builds and sends to the Argus ingest endpoint every time an error is captured.
 
     **Envelope fields:**
 
@@ -47,11 +47,11 @@ Before you dive into the SDK reference or platform guides, it helps to understan
     | `tags`         | object                       | Arbitrary key–value strings for filtering                    |
     | `request`      | object                       | `{ url, method, headers }` — auto-populated in the browser SDK |
 
-    The API validates every envelope with Zod. Invalid envelopes return `HTTP 400` with details. The timestamp field is strictly enforced in milliseconds — a Unix seconds value is rejected.
+    Invalid envelopes return `HTTP 400` with details. The timestamp field is strictly enforced in milliseconds — a Unix seconds value is rejected.
   </Accordion>
 
   <Accordion title="Event — a single error occurrence">
-    An event is one captured occurrence of an error in your application. Every time the SDK sends an envelope and the ingest pipeline accepts it, Argus creates an event record containing:
+    An event is one captured occurrence of an error in your application. Every time the SDK sends an envelope and Argus accepts it, Argus creates an event record containing:
 
     - The full **stack trace** with filenames, function names, line numbers, and column numbers
     - **Context** such as the browser or OS, the URL where the crash happened, and any tags you attached
@@ -72,21 +72,19 @@ Before you dive into the SDK reference or platform guides, it helps to understan
     - The **status** — `UNRESOLVED`, `RESOLVED`, or `IGNORED`
     - The **culprit** — the most relevant stack frame, surfaced at the top of the detail view
 
-    When Argus receives a new event, the worker computes its fingerprint and checks whether a matching issue already exists. If it does, Argus increments that issue's event count and updates `lastSeen`. If it doesn't, Argus creates a new issue and fires any matching alert rules.
+    When Argus receives a new event, it checks whether a matching issue already exists. If it does, Argus increments that issue's event count and updates the last-seen time. If it doesn't, Argus creates a new issue and fires any matching alert rules.
 
     Manage issues from the **Issues** page in the dashboard or via the REST API.
   </Accordion>
 
   <Accordion title="Fingerprint — how duplicates are detected">
-    A fingerprint is a **SHA-256 hash of the top 5 stack frames** of an exception. Argus uses this hash as the deduplication key when deciding whether a new event belongs to an existing issue or should open a new one.
-
-    Because the hash is derived from code locations rather than error messages:
+    Argus automatically groups identical errors into the same issue using a fingerprint — a hash derived from the top stack frames of an exception. This means:
 
     - The same bug triggered by different users maps to the **same issue**
-    - The same bug occurring across multiple deploys maps to the **same issue** (until source maps change the frame locations)
+    - The same bug occurring across multiple deploys maps to the **same issue** (until the relevant code locations change)
     - Different bugs with the same error message but different stack traces map to **different issues**
 
-    The same error thrown in Chrome and Firefox also produces the same fingerprint — Argus normalises both stack formats to a common `StackFrame` structure before hashing.
+    The same error thrown in Chrome and Firefox also produces the same fingerprint — Argus normalises both stack formats to a common structure before computing the hash.
 
     <Note>
       Minified production builds can cause multiple distinct bugs to collapse into a single fingerprint if minification maps many source lines to the same output line. Source map resolution (planned) will address this.
@@ -120,7 +118,7 @@ Before you dive into the SDK reference or platform guides, it helps to understan
 
     **Delivery channels:**
 
-    - **Email** — Argus sends a formatted message via Resend to the address you configure on the rule
+    - **Email** — Argus sends a formatted notification to the address you configure on the rule
     - **Webhook** — Argus POSTs a JSON payload to any HTTPS URL you provide, so you can pipe alerts into Slack, PagerDuty, or your own tooling
 
     Each rule is scoped to a single project. You can create, enable, disable, and delete rules from the **Alerts** page in the dashboard. Every delivery attempt is logged — check **Alert Logs** if a notification doesn't arrive as expected.
@@ -134,7 +132,7 @@ Before you dive into the SDK reference or platform guides, it helps to understan
     | Free | 10,000 events  |
     | Pro  | 500,000 events |
 
-    Quota is tracked atomically in Redis — bursts can't overshoot the limit. When your organization hits its cap:
+    When your organization hits its cap:
 
     - The ingest endpoint returns **HTTP 429**
     - The SDK detects the 429 response and **drops the event silently** — no retry, no exception thrown in your app

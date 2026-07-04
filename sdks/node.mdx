@@ -1,5 +1,5 @@
 ---
-title: "Argus Node.js SDK: Server-Side Error Capture"
+title: "Argus Node.js SDK: Express and Process Error Capture"
 sidebarTitle: "Node.js SDK"
 description: "Install @argus/sdk-node to capture uncaughtException and unhandledRejection events in Node.js apps, with optional Express middleware."
 ---
@@ -119,7 +119,7 @@ async function processJob(jobId: string) {
   try {
     await runJob(jobId);
   } catch (err) {
-    captureException(err);
+    await captureException(err);
     // Mark the job as failed and continue processing the queue
     await markJobFailed(jobId);
   }

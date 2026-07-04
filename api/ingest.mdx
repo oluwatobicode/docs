@@ -14,10 +14,16 @@ POST /api/v1/ingest/:projectId/envelope
 
 ## Authentication
 
-This endpoint uses **DSN key authentication**, not a session cookie. Pass your project's public key in the `X-Argus-Auth` request header. You can find your DSN public key in **Project Settings → Client Keys**.
+This endpoint uses **DSN key authentication**, not a session cookie. Pass your project's public key in the `X-Sentry-Auth` request header using the `sentry_key=` format. You can find your DSN public key in **Project Settings → Client Keys**.
 
 ```
-X-Argus-Auth: YOUR_PUBLIC_KEY
+X-Sentry-Auth: sentry_key=YOUR_PUBLIC_KEY
+```
+
+Alternatively, you can pass the key as a query parameter:
+
+```
+POST /api/v1/ingest/:projectId/envelope?sentry_key=YOUR_PUBLIC_KEY
 ```
 
 Session-based auth tokens are not accepted here. Use the DSN key.
@@ -131,7 +137,7 @@ The `exception` object is required and must include a non-empty stack trace.
 ```bash
 curl -X POST https://your-domain.com/api/v1/ingest/PROJECT_ID/envelope \
   -H 'Content-Type: application/json' \
-  -H 'X-Argus-Auth: YOUR_PUBLIC_KEY' \
+  -H 'X-Sentry-Auth: sentry_key=YOUR_PUBLIC_KEY' \
   -d '{
     "level": "error",
     "timestamp": 1720000000000,
@@ -181,18 +187,18 @@ curl -X POST https://your-domain.com/api/v1/ingest/PROJECT_ID/envelope \
 
 | Status | Meaning                                                                                  |
 |--------|------------------------------------------------------------------------------------------|
-| `200`  | Event accepted and queued for processing.                                                |
-| `400`  | Invalid envelope — validation failed. The response body contains Zod field-level errors. |
-| `401`  | Missing or invalid DSN public key in `X-Argus-Auth`.                                     |
+| `200`  | Event accepted and recorded.                                                             |
+| `400`  | Invalid envelope — validation failed. The response body contains field-level errors.     |
+| `401`  | Missing or invalid DSN public key in `X-Sentry-Auth`.                                   |
 | `429`  | Rate limit or monthly event quota exceeded.                                              |
 
-### 200 — Queued
+### 200 — Accepted
 
 ```json
 {
   "statusCode": 200,
   "status": "success",
-  "message": "Event received"
+  "message": "Event received successfully"
 }
 ```
 

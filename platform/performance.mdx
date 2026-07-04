@@ -7,7 +7,7 @@ description: "Argus tracks transaction durations, span timing, and web vitals li
 Performance monitoring in Argus gives you visibility into how fast — or slow — your application really is. Argus captures transactions (individual units of work like an HTTP request or a page load), breaks them down into child spans, and aggregates web vitals so you can see exactly where time is being spent and catch regressions before your users do. Performance monitoring is available on all plans.
 
 <Note>
-  Performance monitoring is in active development. Transaction ingestion is available now. Web vitals aggregation and TimescaleDB-powered time-series analytics (p50/p75/p95 latency, historical trending) are coming in a future release.
+  Performance monitoring is in active development. Transaction ingestion is available now. Web vitals aggregation and time-series analytics (p50/p75/p95 latency, historical trending) are coming in a future release.
 </Note>
 
 ## Transactions
@@ -16,6 +16,8 @@ A **transaction** represents a single, discrete unit of work in your application
 
 | Field | Type | Description |
 |---|---|---|
+| `id` | string | Unique identifier for the transaction |
+| `projectId` | string | The project this transaction belongs to |
 | `name` | string | A human-readable label for the operation, e.g. `GET /api/users` or `page.load /dashboard` |
 | `traceId` | string | A unique identifier that links this transaction to a distributed trace |
 | `status` | string | The outcome of the transaction, e.g. `ok`, `error`, or `timeout` |
@@ -28,6 +30,9 @@ Each transaction contains one or more **spans** that represent sub-operations wi
 
 | Field | Type | Description |
 |---|---|---|
+| `id` | string | Unique identifier for the span |
+| `transactionId` | string | The transaction this span belongs to |
+| `parentSpanId` | string \| null | The ID of the parent span, if this span is nested inside another |
 | `operation` | string | The type of work, e.g. `db.query`, `http.request`, `render` |
 | `description` | string | A human-readable description of the specific operation |
 | `duration` | number | Time taken by this span, in milliseconds |

@@ -74,10 +74,6 @@ POST /api/v1/projects
   The display name for the project. Argus derives the URL slug from this value.
 </ParamField>
 
-<ParamField body="platform" type="string">
-  Optional platform identifier, e.g. `javascript`, `node`, `python`, `react-native`. Used for display purposes in the dashboard.
-</ParamField>
-
 ### Example Request
 
 ```bash
@@ -85,8 +81,7 @@ curl -X POST https://your-domain.com/api/v1/projects \
   -H 'Content-Type: application/json' \
   -H 'Cookie: session=YOUR_SESSION_COOKIE' \
   -d '{
-    "name": "My Web App",
-    "platform": "javascript"
+    "name": "My Web App"
   }'
 ```
 

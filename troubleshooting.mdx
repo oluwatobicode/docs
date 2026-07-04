@@ -1,7 +1,7 @@
 ---
-title: "Troubleshooting Argus: Common Issues & Fixes"
+title: "Argus Troubleshooting: Missing Events, DSN, and 4xx Errors"
 sidebarTitle: "Troubleshooting"
-description: "Diagnose and fix common Argus setup problems — errors not appearing, invalid DSN, 401/429 responses, and missing stack traces."
+description: "Diagnose and resolve common Argus integration problems — missing events, invalid DSN, HTTP 401/429/400 responses, and missing stack traces."
 ---
 
 This guide walks you through the most common problems you'll encounter when integrating Argus into your application. For each issue you'll find a clear cause and the exact steps to fix it — start at the top and work down until your events appear in the dashboard.
@@ -109,7 +109,7 @@ This guide walks you through the most common problems you'll encounter when inte
 
     | Problem | Fix |
     |---|---|
-    | `timestamp` is in **seconds** instead of milliseconds | Use `Date.now()` — the validator rejects values below the year 2020 in milliseconds (~`1.58e12`). |
+    | `timestamp` is in **seconds** instead of milliseconds | Use `Date.now()` — never `Math.floor(Date.now() / 1000)`. The validator requires a value of at least `1_577_836_800_000` (2020-01-01 in ms). A seconds-format timestamp (~1.7e9) is roughly 1,000× too small and is rejected immediately. |
     | Missing `exception.stacktrace.frames` array | Include at least one stack frame object in the `frames` array. |
     | Zero stack frames | The `frames` array must have at least one entry. |
 
@@ -119,7 +119,7 @@ This guide walks you through the most common problems you'll encounter when inte
 
     **If you're building a custom integration**
 
-    Ensure your envelope matches this structure:
+    Ensure your envelope matches this structure, and that `timestamp` is always produced with `Date.now()`:
 
     ```json
     {
@@ -172,7 +172,7 @@ This guide walks you through the most common problems you'll encounter when inte
   <Accordion title="Node.js process exits unexpectedly after an uncaught error">
     This is expected behavior. When the Node.js SDK captures an `uncaughtException`, it sends the event to Argus and then calls `process.exit(1)`.
 
-    This matches what Node.js itself does without Argus — after an uncaught exception the process is in an undefined state and Node's own documentation recommends exiting. Argus waits for the network send to complete before exiting so the event is not lost.
+    This matches what Node.js itself does without Argus — after an uncaught exception the process is in an undefined state and Node's own documentation recommends exiting. Argus doesn't change this behavior; it simply captures the event and waits for the network send to complete before the process exits so the event is not lost.
 
     **`unhandledRejection` behaves differently** — the SDK captures and sends the event but does **not** exit, because unhandled promise rejections don't necessarily leave the process in a bad state.
 
@@ -180,7 +180,7 @@ This guide walks you through the most common problems you'll encounter when inte
   </Accordion>
 
   <Accordion title="Express errors are not being captured">
-    The Argus Express error handler must be registered **after all your routes and other middleware**. Express passes errors to error-handling middleware in registration order, so placing `argusErrorHandler()` too early means it never receives errors thrown by your route handlers.
+    The Argus Express error handler must be registered **after all your routes and other middleware — it must be the very last `app.use()` call in your application**. Express passes errors to error-handling middleware in registration order, so placing `argusErrorHandler()` too early means it never receives errors thrown by your route handlers.
 
     ```ts
     import express from "express";
@@ -194,13 +194,19 @@ This guide walks you through the most common problems you'll encounter when inte
     app.get("/", (req, res) => res.send("Hello"));
     app.use("/api", apiRouter);
 
-    // ✅ argusErrorHandler() must be last
+    // ✅ Your own error handler (if any) goes before argusErrorHandler
+    app.use((err, req, res, next) => {
+      res.status(500).json({ error: "Internal Server Error" });
+      next(err);
+    });
+
+    // ✅ argusErrorHandler() must be the very last app.use() call
     app.use(argusErrorHandler());
 
     app.listen(3000);
     ```
 
-    If you have a custom error handler of your own, register `argusErrorHandler()` before it so Argus sees the error first, then passes it along.
+    `argusErrorHandler()` must come last — after any custom error handlers — so that every error, including those that pass through your own handlers, is captured before the request cycle ends.
   </Accordion>
 
 </AccordionGroup>

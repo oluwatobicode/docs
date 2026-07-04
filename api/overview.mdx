@@ -77,7 +77,6 @@ Every Argus API response — success or error — follows the same envelope shap
 |------|---------|
 | `400` | **Bad request** — invalid payload or missing required fields |
 | `401` | **Unauthorized** — not logged in, or invalid DSN key |
-| `403` | **Forbidden** — authenticated but not permitted to perform this action |
 | `404` | **Not found** — the requested resource does not exist |
 | `409` | **Conflict** — e.g. the email address is already registered |
 | `429` | **Too many requests** — monthly quota or per-minute rate limit exceeded |
