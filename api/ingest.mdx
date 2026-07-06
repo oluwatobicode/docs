@@ -221,3 +221,44 @@ curl -X POST https://your-domain.com/api/v1/ingest/PROJECT_ID/envelope \
 <Warning>
   **Timestamp must be in milliseconds, not seconds.** Always use `Date.now()` (e.g. `1720000000000`), never `Math.floor(Date.now() / 1000)`. The validator enforces a lower bound of `1577836800000` (2020-01-01); a Unix seconds value (~`1.7e9`) falls well below this bound and is rejected with HTTP 400.
 </Warning>
+
+## Transaction Envelopes (performance)
+
+The same endpoint also accepts **performance envelopes**, discriminated by `"type": "transaction"`. They pass the same DSN auth, rate limit, and quota chain as error envelopes.
+
+<ParamField body="type" type="'transaction'" required>
+  Marks the envelope as a performance transaction instead of an error event.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Operation label, e.g. `page.load /dashboard` (1–200 chars).
+</ParamField>
+
+<ParamField body="duration" type="number" required>
+  Total duration in milliseconds (≥ 0).
+</ParamField>
+
+<ParamField body="timestamp" type="number" required>
+  Milliseconds since epoch — same rule as error envelopes.
+</ParamField>
+
+<ParamField body="status" type="string">
+  Outcome, e.g. `ok` (default).
+</ParamField>
+
+<ParamField body="vitals" type="object">
+  Optional web vitals: `{ lcp?, cls?, fcp?, ttfb? }` — LCP/FCP/TTFB in ms, CLS unitless.
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "type": "transaction",
+  "name": "page.load /dashboard",
+  "duration": 1240,
+  "timestamp": 1720000000000,
+  "status": "ok",
+  "vitals": { "lcp": 1800, "cls": 0.05, "fcp": 900, "ttfb": 250 }
+}
+```

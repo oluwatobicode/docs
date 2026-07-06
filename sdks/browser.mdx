@@ -56,6 +56,9 @@ export interface InitOptions {
 
   /** Your application's release version (e.g. '1.4.2' or a git SHA). */
   release?: string;
+
+  /** Capture web vitals + a page.load transaction per page view (default: true). */
+  vitals?: boolean;
 }
 ```
 
@@ -64,8 +67,13 @@ export interface InitOptions {
 | `dsn` | `string` | ✅ | Your Argus project DSN. A malformed DSN throws loudly at startup — fix it before deploying. |
 | `environment` | `string` | — | The deployment environment (e.g. `'production'`, `'staging'`). Shown as a filter in Argus. |
 | `release` | `string` | — | Your application version or release identifier. Use it to correlate errors with deploys. |
+| `vitals` | `boolean` | — | Web-vitals capture (LCP, CLS, FCP, TTFB) + a `page.load` transaction per page view. **Defaults to `true`**; set `false` to opt out. Requires v0.2+. |
 
 </Steps>
+
+## Web Vitals & Performance (v0.2+)
+
+With `vitals` enabled (the default), the SDK observes **LCP, CLS, FCP, and TTFB** via buffered `PerformanceObserver`s and reports **one `page.load` transaction per page view** when the page is hidden or unloaded — sent with `keepalive` so it survives navigation. See [Performance](/platform/performance) for how the dashboard aggregates this data.
 
 ## Manual Capture
 

@@ -1,30 +1,30 @@
 ---
 title: "REST API Endpoints for Argus Performance Data"
 sidebarTitle: "Performance"
-description: "Query transaction durations and web vitals for your project via the Argus performance API endpoints."
+description: "Query aggregated transaction timings and web vitals for your project via the Argus performance API endpoints."
 ---
 
-The performance API will expose transaction traces and web vitals data for your project. The paths below are the **planned** routes; the request/response shapes describe the intended design.
-
-<Warning>
-  Performance monitoring is **not yet implemented**. These endpoints are not live — don't call them in production yet. This page documents the planned API so integrators can prepare; shapes may change before release. Error tracking, alerts, and billing are fully available today.
-</Warning>
+The performance API exposes aggregated transaction timings and web vitals collected by the browser SDK (`@argusdev/sdk-browser` ≥ 0.2). Both endpoints aggregate over a bounded time window you control with the `days` query parameter.
 
 ## Authentication
 
-Both performance endpoints require an active session. Requests without a valid session cookie return `401 Unauthorized`.
+Both endpoints require an active session. Requests without a valid session cookie return `401 Unauthorized`.
+
+## Query Parameters (both endpoints)
+
+<ParamField query="days" type="number" default="7">
+  Aggregation window in days. Allowed range `1`–`30`.
+</ParamField>
 
 ---
 
 ## List Transactions
 
-Retrieve transaction records collected for a project. Each transaction represents a traced operation — a page load, an API call, or a background job — with a name, trace ID, status, and duration.
+Returns transactions **grouped by name**, with percentile durations computed over the window (up to the most recent 5,000 rows). Sorted by count descending, top 50 groups.
 
 ```
 GET /api/v1/projects/:projectId/performance/transactions
 ```
-
-### Path Parameters
 
 <ParamField path="projectId" type="string" required>
   The ID of the project whose transactions you want to retrieve.
@@ -33,21 +33,41 @@ GET /api/v1/projects/:projectId/performance/transactions
 ### Example Request
 
 ```bash
-curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/transactions \
+curl "https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/transactions?days=7" \
   -H 'Cookie: session=YOUR_SESSION_COOKIE'
 ```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Transactions fetched successfully",
+  "data": [
+    {
+      "name": "page.load /dashboard",
+      "count": 128,
+      "p50": 940,
+      "p75": 1480,
+      "p95": 3210,
+      "lastSeen": "2026-07-06T09:31:41.041Z"
+    }
+  ]
+}
+```
+
+Durations are in **milliseconds**.
 
 ---
 
 ## Get Web Vitals
 
-Retrieve web vitals measurements for a project. Web vitals reflect real-user experience across key metrics including Largest Contentful Paint (LCP), Cumulative Layout Shift (CLS), Time to First Byte (TTFB), and First Contentful Paint (FCP).
+Returns the **p75** (web-vitals reporting standard) for each core vital across the window, with a rating per web.dev thresholds and the number of samples behind it. A vital with no samples is `null`.
 
 ```
 GET /api/v1/projects/:projectId/performance/vitals
 ```
-
-### Path Parameters
 
 <ParamField path="projectId" type="string" required>
   The ID of the project whose web vitals you want to retrieve.
@@ -56,9 +76,30 @@ GET /api/v1/projects/:projectId/performance/vitals
 ### Example Request
 
 ```bash
-curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/vitals \
+curl "https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performance/vitals?days=7" \
   -H 'Cookie: session=YOUR_SESSION_COOKIE'
 ```
+
+### Example Response
+
+```json
+{
+  "statusCode": 200,
+  "status": "success",
+  "message": "Web vitals fetched successfully",
+  "data": {
+    "vitals": {
+      "lcp": { "p75": 2140, "rating": "good", "samples": 118 },
+      "cls": { "p75": 0.06, "rating": "good", "samples": 112 },
+      "fcp": { "p75": 1650, "rating": "good", "samples": 118 },
+      "ttfb": { "p75": 410, "rating": "good", "samples": 120 }
+    },
+    "sampleCount": 120
+  }
+}
+```
+
+`rating` is one of `good`, `needs-improvement`, or `poor`. LCP/FCP/TTFB are in milliseconds; CLS is unitless.
 
 ## Response Codes
 
@@ -66,3 +107,4 @@ curl https://your-domain.com/api/v1/projects/clxk2m9ab0000qw8e3f7t1pz2/performan
 |--------|--------------------------------------------------|
 | `200`  | Request succeeded.                               |
 | `401`  | Not authenticated — no valid session.            |
+| `404`  | Project not found, or not in your organization.  |
